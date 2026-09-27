@@ -43,6 +43,7 @@ export default class SourceReader {
 
       return result;
     } catch (cause) {
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('source-read-failed', cause);
       Ow.throw(cause);
       // c8/V8: the `finally` clause range never counts.
@@ -71,7 +72,6 @@ export default class SourceReader {
       await this[I.READER].cancel(reason);
     } catch (cause) {
       distributor[DISTRIBUTOR.$I.WARN]('source-cancel-failed', cause);
-      Ow.throw(cause);
     }
   }
 }

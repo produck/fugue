@@ -14,8 +14,10 @@ Deltas against `.github/instructions/produck/10-produck-node.instructions.md`.
     evidence).
   - `DESIGN.md`: design document (semantics, architecture, lifecycle,
     observability).
-  - `SWITCHING.md`, `WAITING.md`, `BROWSER.md`: migration notes, open items and
-    browser environment.
+  - `EXCEPTIONS.md`: the normative behaviour after an exception (failure
+    domains, reporting surface, recovery ownership).
+  - `SWITCHING.md`, `BROWSER.md`: migration notes, open items and browser
+    environment.
 - Documents are written in Chinese prose with English terms, headings `#`
   followed by a blockquote lead.
 

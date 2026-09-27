@@ -97,8 +97,7 @@ class ReadableStreamDistributor extends EventTarget {
       transferrer[TRANSFERRER.$I.SET_DONE]();
     }
 
-    transferrer[TRANSFERRER.$I.DUMP](stash).catch(noop);
-
+    transferrer[TRANSFERRER.$I.DUMP](stash);
     this[$I.TRANSFERRER] = transferrer;
     this[A.I.CTOR.READER.CURRENT] = DegradedChunkReaderImpl;
 
@@ -163,8 +162,7 @@ class ReadableStreamDistributor extends EventTarget {
       registry.prune(forked);
     }
 
-    await this[A.I.SOURCE].cancel(termination).catch(noop);
-
+    await this[A.I.SOURCE].cancel(termination);
     await this[A.$I.AGENT].pullingSettled;
 
     const transferrer = this[$I.TRANSFERRER];
@@ -175,9 +173,7 @@ class ReadableStreamDistributor extends EventTarget {
       stash[_A.STASH.$I.DROP]();
     } else {
       transferrer[TRANSFERRER.$I.SET_DONE]();
-
-      // Not awaited: a hanging release must not drag the teardown along.
-      transferrer[TRANSFERRER.$I.DROP]().catch(noop);
+      transferrer[TRANSFERRER.$I.DROP]();
     }
   }
 }

@@ -206,8 +206,8 @@
     **每个拷贝先关读器**（`$I.CLOSE`，两相同一句话）**再**
     `controller.error(终止原因)` + `prune`，不补已缓冲的前缀。
   - **异步段**（Promise 落地时才完成）：`await SOURCE_READER.cancel(终止原因)`
-    （失败由源读取器在发生处派 `warn('source-cancel-failed')`，这里只吞，
-    不打断收摊）→
+    （失败由源读取器在发生处派 `warn('source-cancel-failed')`，它**不再上抛**，
+    所以这里既不用吞也不会被打断）→
     `await AGENT.pullingSettled`——**只取时机**，结果归代理侧（见消费代理一节）
     → **按此刻的相位收场**：两侧同形——`$I.SET_DONE()`（封口）+ `$I.DROP()`
     （放开载体）；内存相放开的是 stash 里的块，降级相放开的是待写队列与
@@ -404,11 +404,11 @@
   `finished`**：进去就是陷阱第一条（循环提前停），出路只能是那个拒绝。
 - **构造收 `(distributor, stream)`，只多存一个分发器引用**（2026-09-26）：
   用途就是报告——`[I.READ]()` 里平台 `read()` 拒 → 派
-  `warn('source-read-failed', cause)` 再原样抛出；`cancel()` 里平台
-  `cancel()` 拒 → 派 `warn('source-cancel-failed', cause)` 再原样抛出，
-  `$I.DESTROY` 那边只吞（不打断收摊）。两处都**不打闩**：单次性是调用
-  图的事实（`cancel` 唯一调用者 `$I.DESTROY` + 它被 `$I.DESTROYED`
-  缓存），加闩只会多一个走不到的死分支。**一趟读只有 `[I.READ]`**
+  `warn('source-read-failed', cause)` 再原样抛出（数据面 fail-fast）；
+  `cancel()` 里平台 `cancel()` 拒 → 派 `warn('source-cancel-failed', cause)`
+  **只报不抛**（收摊面 fail-soft，2026-09-27 改）。两处都**不打闩**：
+  单次性是调用图的事实（`cancel` 唯一调用者 `$I.DESTROY` + 它被
+  `$I.DESTROYED` 缓存），加闩只会多一个走不到的死分支。**一趟读只有 `[I.READ]`**
   （2026-09-26 合回）：平台读、失败上报、`I.READING` 清槽同在
   `try / catch / finally` 一个块里——槽因此与它代表的那条 promise 严格
   对齐，形状与代理的 `settlePulling()` 一致。`try` 里**保留
@@ -427,8 +427,8 @@
 - `cancel(reason)`：**单次到达**（唯一调用者 `$I.DESTROY`，且它被
   `$I.DESTROYED` 缓存，不加幂等守卫）；**先置位再转交**平台
   `reader.cancel(reason)`；上游 cancel 回调失败时它先派
-  `warn('source-cancel-failed')`、异常再原样抛给调用者
-  （规范保证流仍关闭）。**不释放锁**：它只表示我们不要这个源了，
+  `warn('source-cancel-failed')`，异常**不再上抛**（收摊面 fail-soft；
+  规范保证流仍关闭）。**不释放锁**：它只表示我们不要这个源了，
   不表示把流还回去。
 - **收摊后的平台回声不采信**：`cancelled` 为真时 `read()` 直接答
   `{done: true}`（不写 `done`），也不再去碰平台那个
@@ -646,9 +646,9 @@
     `$I.DROP` 之前的时序里。与 stash 共有的只剩放开载荷（`PENDING_CHUNKS`
     置空 → drain 靠队列空收手）。一处不同：介质那半**归它自己观测**
     （2026-09-26 改）：`$I.DROP()` 是 async、`await this[_I.DROP]()`，但它
-    仍**不被 await**——失败由它就地派 `warn('drop-failed',
-cause)`（不再吞，也不再经 `ignoreRejection` 转手，那个助手随之删掉）；调用方
-    （`$I.DESTROY`）只吞、不代派（否则一处失败两条事件）。
+    仍**不被 await**——失败由它就地派 `warn('drop-failed', cause)` 并**只报
+    不抛**（收摊面 fail-soft，2026-09-27 改；也不再经 `ignoreRejection`
+    转手，那个助手早已删掉）；调用方（`$I.DESTROY`）因此连吞都不用。
     “不被 await”是硬约束：宿主的放开若挂住（死盘），`destroy()` 不许被一起
     拖住（2026-09-25 定，用例 `should not wait for the medium to release its
 own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永不落地，
@@ -809,6 +809,9 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
 
 ### 异常面（四类归属，2026-09-26 判）
 
+> 规范面（责任划分、失败域、恢复归属、处置清单）在 `EXCEPTIONS.md`；
+> 本节留逐条决策的来历与实测证据。
+
 - **平台保证**（尊重、不兜底）：源是**本 realm 真流**，`read()` 的形状、
   `cancel()` 兑现在途读、已 error 的流对新读立即拒绝都是规范；`controller`
   在已取消 / 已 error 的流上抛、async `pull` 的拒绝被平台吞（已实测）也都
@@ -830,8 +833,8 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   是即发即弃，只报不抛。源读取器同样：平台 `read()` 拒 → 它派
   `source-read-failed` 再原样抛出（那趟 pull 于是照旧失败，代理另派一条
   `pull-failed`——一个因两条事件、两码两义，按“重复上报不去抖”不去重）；
-  平台 `cancel()` 拒 → 它派 `source-cancel-failed` 再原样抛出，
-  `$I.DESTROY` 只吞。**出口唯一**（2026-09-26 收口）：以上所有 `warn` 都
+  平台 `cancel()` 拒 → 它派 `source-cancel-failed`，**只报不抛**（收摊面
+  fail-soft）。**出口唯一**（2026-09-26 收口）：以上所有 `warn` 都
   经分发器的受保护成员 `$I.WARN(code, payload)` 派发——出口一处，
   报告点仍各自在失败的发生处。
 - **介质侧同样在发生处**（2026-09-26 收口，代派没有了）：转移器**构造后**
@@ -840,7 +843,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   `_I.DUMP` → `dump-failed`（载荷是**宿主原始因**；包装错随后照旧抛给
   调用链）· `_I.WRITE` → `write-failed`（闩住后仍会在后续每趟 pull 里由
   `$I.WRITE` 同步抛、代理派 `pull-failed`）· `_I.DROP` → `drop-failed`
-  再原样抛给调用者。
+  后只报不抛（收摊面 fail-soft）。
 - **重复上报不去抖**：与 `backlog` 同族——一个因（dump 被拒）可以让每个
   降级 reader 各派一条 `initialize-failed`；闩住的介质错误会让之后每趟消费
   各派一条 `pull-failed`。水准信号，限频归宿主。

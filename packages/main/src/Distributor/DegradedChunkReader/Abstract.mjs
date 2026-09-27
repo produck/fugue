@@ -41,6 +41,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
       await this[_I.INITIALIZE]();
       await this[I.SYNC]();
     } catch (cause) {
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       distributor[DISTRIBUTOR.$I.WARN]('initialize-failed', cause);
       Ow.throw(cause);
     }
@@ -60,6 +61,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         count++;
       }
     } catch (cause) {
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       distributor[DISTRIBUTOR.$I.WARN]('seek-failed', cause);
       Ow.throw(cause);
     }
@@ -67,19 +69,20 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     this[A.I.SEEKED_COUNT] = count;
   }
 
-  [_A.READER.$I.CLOSE]() {
+  async [_A.READER.$I.CLOSE]() {
     if (this[I.CLOSED]) {
       return;
     }
 
-    const distributor = this[_A.READER.A.I.DISTRIBUTOR];
-
     this[I.CLOSED] = true;
-    Promise.resolve()
-      .then(() => this[_I.CLOSE]())
-      .catch((cause) => {
-        distributor[DISTRIBUTOR.$I.WARN]('close-failed', cause);
-      });
+
+    try {
+      await this[_I.CLOSE]();
+    } catch (cause) {
+      const distributor = this[_A.READER.A.I.DISTRIBUTOR];
+
+      distributor[DISTRIBUTOR.$I.WARN]('close-failed', cause);
+    }
   }
 
   async [_A.READER._I.READ]() {
@@ -108,6 +111,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       result = await this[_I.READ]();
     } catch (cause) {
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       distributor[DISTRIBUTOR.$I.WARN]('read-failed', cause);
       Ow.throw(cause);
     }

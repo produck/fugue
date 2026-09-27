@@ -4,8 +4,6 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { DISTRIBUTOR, _A } from './_External.mjs';
 
-const noop = () => {};
-
 class AbstractTransferrer {
   static [_S.PARSE_ARGUMENTS](args) {
     return args;
@@ -55,6 +53,7 @@ class AbstractTransferrer {
       await this[_I.DUMP](stash);
     } catch (cause) {
       this[I.FAIL](cause);
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('dump-failed', cause);
       Ow.Error.Common('Failed to dump the ChunkStash.', { cause });
     }
@@ -77,7 +76,7 @@ class AbstractTransferrer {
 
   async [I.DRAIN]() {
     if (this[I.DUMPING] !== null) {
-      await this[I.DUMPING].catch(noop);
+      await Promise.allSettled([this[I.DUMPING]]);
     }
 
     // A drain started while the dump was still in flight wakes up here on a
@@ -91,6 +90,7 @@ class AbstractTransferrer {
           await this[_I.WRITE](buffer);
         } catch (cause) {
           this[I.FAIL](cause);
+          // TODO: settle the post-processing of this point (EXCEPTIONS.md).
           this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('write-failed', cause);
           break;
         }
@@ -149,7 +149,6 @@ class AbstractTransferrer {
       await this[_I.DROP]();
     } catch (cause) {
       this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('drop-failed', cause);
-      Ow.throw(cause);
     }
   }
 

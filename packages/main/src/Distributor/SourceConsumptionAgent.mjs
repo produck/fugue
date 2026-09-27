@@ -20,6 +20,7 @@ export default class SourceConsumptionAgent {
     try {
       await this.pull();
     } catch (cause) {
+      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       this.distributor[$I.WARN]('pull-failed', cause);
       Ow.throw(cause);
     } finally {
