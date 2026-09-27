@@ -86,16 +86,20 @@ describe('ForkedReadableStream', () => {
         });
       });
 
-      it('should reject with the source error', async () => {
-        const cause = new Error('the source failed');
-        const source = new ReadableStream({
-          pull() {
-            throw cause;
-          },
-        });
-        const distributor = new TestDistributor(source);
+      it('should reject with the source error itself', async () => {
+        const cases = [new Error('the source failed'), 'boom'];
 
-        await assert.rejects(drain(distributor.fork()), cause);
+        for (const cause of cases) {
+          const source = new ReadableStream({
+            pull() {
+              throw cause;
+            },
+          });
+          const distributor = new TestDistributor(source);
+          const thrown = await drain(distributor.fork()).catch((t) => t);
+
+          assert.equal(thrown, cause);
+        }
       });
 
       it('should dispatch warn(source-read-failed) when the source fails', async () => {
@@ -145,10 +149,13 @@ describe('ForkedReadableStream', () => {
         });
 
         assert.equal((await first.read()).value.toString(), 'a');
-        await assert.rejects(first.read(), cause);
+        const failureOfFirst = await first.read().catch((thrown) => thrown);
 
         assert.equal((await second.read()).value.toString(), 'a');
-        await assert.rejects(second.read(), cause);
+        const failureOfSecond = await second.read().catch((thrown) => thrown);
+
+        assert.equal(failureOfFirst, cause);
+        assert.equal(failureOfSecond, cause);
 
         assert.deepEqual(
           warns.map((warn) => warn.code),

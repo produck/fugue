@@ -296,8 +296,8 @@
 - **宿主取值器抛异常一律放行（2026-09-25 定）**：这属于研发错误，下游工程师
   必须保证它不抛。所以 `Tune` 的安装期求值、`Get` / `snapshot` /
   `get options`，以及每个内部读取点（`ForkHighWaterMark` 在 `fork()` 构造
-  处、`degradeIfNeeded` 两项、`observeBacklog` 一项）都不加 `try`——五个
-  `TODO` 标记随之删掉。两处后果要知道：`fork()` 是**什么都没建**就抛（拷贝
+  处、`degradeIfNeeded` 两项、`observeBacklog` 一项）都不加 `try`。
+  两处后果要知道：`fork()` 是**什么都没建**就抛（拷贝
   未注册、`fork` 事件不派）；pull 里的读取点抛 = 那趟 pull 失败，异常照旧
   到达读侧（拷贝的 read 拒绝），也不出事件——这是放行，不是拦截。
 - **读取时机逐项不同**，写在 `Items.mjs` 每项的头一行注释里（每趟 pull /
@@ -801,6 +801,13 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   `_I.INITIALIZE` / `_I.SEEK` / `_I.READ` / `_I.CLOSE` · 介质的
   `_I.WRITE` / `_I.DUMP` / `_I.DROP` · 非 Buffer 的 chunk。**校验口例外**：
   `Checker` 只出判词、不抛。
+- **不做二次包装**（2026-09-28 定）：数据面的承诺是“让拒绝沿自然路径走到
+  消费方”，所以消费方拿到的是宿主抛出的那个对象本身——源读取器与流面那
+  两处 catch 都用 `Ow.throw`（它本身就是 `throw any`），中间的
+  `settlePulling()` 只有 `try` / `finally`。实测
+  `logs/probe-source-error-identity.mjs`：三个拷贝 + `for await` 拒的
+  都是同一个对象，warn 载荷同一个，框架不添任何自有属性、不设 `cause`，
+  非 `Error` 抛值同样保真。
 - **构造器抛的后果**（2026-09-26 定）：它落在某一趟 pull 里 ⇒ 那趟 pull
   失败（异常照旧到读侧，无事件），而 `$I.TRANSFERRER` 未落位 ⇒
   `degraded` 仍 `false`，下一趟 pull 照旧重试切换（不锁死）。
