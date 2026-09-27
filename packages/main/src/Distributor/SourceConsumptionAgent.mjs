@@ -1,5 +1,3 @@
-import * as Ow from '@produck/ow';
-
 import { $I, A } from './_Symbol.mjs';
 import { _A, TRANSFERRER } from './_External.mjs';
 import * as Options from './Options/index.mjs';
@@ -19,10 +17,6 @@ export default class SourceConsumptionAgent {
   async settlePulling() {
     try {
       await this.pull();
-    } catch (cause) {
-      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this.distributor[$I.WARN]('pull-failed', cause);
-      Ow.throw(cause);
     } finally {
       this.pulling = null;
     }

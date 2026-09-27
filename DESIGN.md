@@ -368,7 +368,7 @@ interface ChunkReader {
   `$I.SET_DONE()`，降级相位由 transferrer 的 `setDone()`）；此后分发流只问
   存储层，不回头看源。
 
-**"触达前沿"不再由介质侧表达**：`ensure()` 的契约是"返回时目标位置已可读，
+**"触达前沿"不由介质侧表达**：`ensure()` 的契约是"返回时目标位置已可读，
 或存储层已终结"，所以介质侧被调用时取不到货只可能是契约违规（实现侧按
 断言处理），不是一种要往下传的状态。
 
@@ -489,8 +489,7 @@ sequenceDiagram
 stash 里且不会再涨，落介质只是白搬一趟），取“切”时切换的执行必须自己把
 状态交代清楚，第一条就是
 **终态随交接走**：stash 已 `done` 就先给新落点 `$I.SET_DONE()`，否则读器会在
-前沿等一个永不来的下一笔（旧写法把判据塞在 `toStash` 末尾、只对 `PUSH` 跑，
-所以“不切换”只是碰巧，不是策略）。失败也不锁死：判据每趟都跑，宿主修好之后
+前沿等一个永不来的下一笔。失败也不锁死：判据每趟都跑，宿主修好之后
 下一趟就重新尝试。
 
 ## 读写协调
@@ -724,9 +723,9 @@ sequenceDiagram
 
 源流正常结束（源出错已有 `warn('source-read-failed')` 兜着）、全部 fork
 离开等更细粒度事件尚未实现，属规划。`warn` 的
-code 现在有十一个：`backlog` / `close-failed` / `drop-failed` / `dump-failed` /
-`initialize-failed` / `pull-failed` / `read-failed` / `seek-failed` /
-`source-cancel-failed` / `source-read-failed` / `write-failed`（载荷随 code；
+code 现在有十个：`backlog` / `close-failed` / `drop-failed` / `dump-failed` /
+`initialize-failed` / `read-failed` / `seek-failed` / `source-cancel-failed` /
+`source-read-failed` / `write-failed`（载荷随 code；
 框架不装默认处理器，宿主自己接）。
 `destroy()`（强档）不另派事件：它是
 宿主动作，调用方本来就知道——收摊何时完成看它返回的那个 Promise。

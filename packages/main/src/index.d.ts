@@ -140,7 +140,6 @@ export declare namespace Event {
     | { code: 'drop-failed'; payload: unknown }
     | { code: 'dump-failed'; payload: unknown }
     | { code: 'initialize-failed'; payload: unknown }
-    | { code: 'pull-failed'; payload: unknown }
     | { code: 'read-failed'; payload: unknown }
     | { code: 'seek-failed'; payload: unknown }
     | { code: 'source-cancel-failed'; payload: unknown }

@@ -13,6 +13,7 @@ import {
   makeSource,
   TestDegradedChunkReader,
   TestDistributor,
+  TestTransferrer,
 } from '#test/baseline.mjs';
 
 const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
@@ -99,11 +100,39 @@ it('should stay false, rejecting the read, when the family is unfinished', async
 
   const distributor = new UnfinishedDistributor(makeSource(['a', 'b']));
   const reader = distributor.fork().getReader();
+  const warns = [];
+
+  distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
   Options.Tune.MaxStashByteLength(distributor, 0);
 
   await assert.rejects(reader.read(), EXPECTED.UNIMPLEMENTED);
   assert.equal(distributor.degraded, false);
+  assert.deepEqual(warns, []);
+});
+
+it('should stay false, rejecting the read, when the host constructor throws', async () => {
+  const cause = new Error('the medium refused to open');
+
+  class RefusingCtorTransferrer extends TestTransferrer {
+    constructor() {
+      super();
+      throw cause;
+    }
+  }
+
+  const family = makeFamily({ medium: RefusingCtorTransferrer });
+  const distributor = new family.Distributor(makeSource(['a']));
+  const reader = distributor.fork().getReader();
+  const warns = [];
+
+  distributor.addEventListener('warn', (event) => warns.push(event.detail));
+
+  Options.Tune.MaxStashByteLength(distributor, 0);
+
+  await assert.rejects(reader.read(), cause);
+  assert.equal(distributor.degraded, false);
+  assert.deepEqual(warns, []);
 });
 
 it('should reject the read that needs the medium when the medium refused to open', async () => {

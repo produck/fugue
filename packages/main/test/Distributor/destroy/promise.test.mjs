@@ -105,7 +105,7 @@ describe('>promise', () => {
     assert.equal(warns[0].payload, cause);
   });
 
-  it('should dispatch warn(pull-failed) for the in-flight pull', async () => {
+  it('should leave the phase unswitched when the in-flight switch fails', async () => {
     const cause = new Error('the medium refused to open');
     const warns = [];
     const source = new ReadableStream({
@@ -140,11 +140,7 @@ describe('>promise', () => {
     await settle();
     await distributor.destroy();
 
-    assert.deepEqual(
-      warns.map((warn) => warn.code),
-      ['pull-failed'],
-    );
-    assert.equal(warns[0].payload, cause);
+    assert.deepEqual(warns, []);
     assert.equal(distributor.degraded, false);
 
     const failure = await aborted;

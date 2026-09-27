@@ -80,9 +80,8 @@
   ——把一个 `this[…]` 拼进多参调用里，prettier 会把实参逐行展开，反而
   多占行、也更难读。判据：内联后整行仍 ≤80 列才收（`printWidth`）。
 - 环检查 `logs/check-import-cycles.mjs`：34 个模块，强连通分量 0。
-  拆表之前存过一个二元回边（别名表读子表 + 子表向上借父表）；
-  拆开后“向上借”落在 `_External.mjs` 这条叶子上，`_Symbol.mjs` 只定义
-  不引用，环自然消失。
+  `_Symbol.mjs` 只定义不引用，“向上借”落在 `_External.mjs` 这条叶子上，
+  环自然消失。
 - **宿主面 = 公开成员 + `_I` / `_S`**（后者经包出口的 `SYMBOL` 开出去，
   按家族分组）。`I` / `$I` / `A` **不开**：宿主需要一项能力时，优先把它
   _升格为公开成员_（例：写侧构造参数从 `$I.SET_TRANSFERRER_ARGS` 升为
@@ -123,9 +122,6 @@
   （`$I.TERMINATION` 是否已落）；
   `terminate()`（只关闸门，幂等）；`destroy()`（关闸门 + 封口 + 切断源
   - 收摊；幂等，返回同一个 Promise）。
-- **`fork` 的 `label` 参数已废弃（2026-09-24）**：`fork()` 不再收助记符，
-  `I.LABEL` 与该构造参数一并删——它写进去但从没被读过，不进事件也不进
-  统计，留着只是死状态。
 - 内部：`I.SOURCE_READER`（唯一 source 消费者）· `$I.CHUNK_STASH`（共享
   `ChunkStash`）· `$I.SOURCE_CONSUMPTION_AGENT`（消费代理）·
   `$I.FORKED_READABLE_STREAM_REGISTRY`
@@ -140,16 +136,14 @@
   **公开**入口 `setTransferrerArgs(...)`（落 `I.TRANSFERRER_ARGS`，经写侧家族的
   `_S.PARSE_ARGUMENTS` 归一——基类给了恒等默认，分发器自己不解释）。构造
   校验 source 为**本 realm** 的、未锁定的 WHATWG ReadableStream。
-- **源必须是本 realm 的 ReadableStream（2026-09-26 定）**：判定只剩
-  `value instanceof ReadableStream`；此前的鸭子型兼容面（`toStringTag` +
-  `locked` 是布尔 + `getReader` 是函数）已拆。理由不是风格：库里多处**依赖
-  真流的规范语义**（`locked` 恒真、`cancel()` 关流并兑现在途读、errored 流
-  对新读立即拒绝、reader 独占），鸭子型对象只是“看起来像”，通过了才是
-  坏消息——错误被推到运行期。判据仍**只出判词、不抛**：`instanceof` 对
-  本地 Proxy（含 revoked）会跑 `[[GetPrototypeOf]]` 陷阱，所以 `try` 留着，
-  抛就判 `false`。代价：跨 realm（iframe / worker / 另一 `vm` 上下文）的流
-  不再直接收，得先经适配层转成本地 `ReadableStream` 再传——“适配工具包”
-  另开一个包，与核心包分工干净。
+- **源必须是本 realm 的 ReadableStream（2026-09-26 定）**：判定就是
+  `value instanceof ReadableStream`。理由不是风格：库里多处**依赖真流的
+  规范语义**（`locked` 恒真、`cancel()` 关流并兑现在途读、errored 流对新读
+  立即拒绝、reader 独占），“看起来像”的对象通过了才是坏消息——错误被推到
+  运行期。判据**只出判词、不抛**：`instanceof` 对本地 Proxy（含 revoked）会
+  跑 `[[GetPrototypeOf]]` 陷阱，所以 `try` 留着，抛就判 `false`。跨 realm
+  （iframe / worker / 另一 `vm` 上下文）的流要先经适配层转成本地
+  `ReadableStream` 再传——“适配工具包”另开一个包，与核心包分工干净。
   实测口径：`logs/probe-checker-throw.mjs`（真流通过；鸭子型、revoked、
   抛异常的访问器都判否）。
 - 共享 stash 由分发器 create/持有并注入各读取器；内容生命周期（`$I.PUSH()` /
@@ -168,16 +162,15 @@
   还会让两个分支看起来不一样；同步抛错照样让 `pull()` 拒绝。
 - **相位边界的决定各有一个显式位置**：写入分支在 `pull()`（问
   `distributor.degraded`）、阈值判据与边界策略在 `degradeIfNeeded()`、**交接与
-  终态播种在 `$I.DEGRADE`**。旧的写法把判据塞在 `toStash` 末尾，于是“达到上限
-  又遇到 `done` 时不切换”是**位置带来的副作用**，没人声明过；现在判据对 `done`
-  那一趟也跑。
+  终态播种在 `$I.DEGRADE`**。判据对 `done` 那一趟也跑——“达到上限又遇到
+  `done` 时切不切”因此是显式声明的决定，不是位置带来的副作用。
 - **边界策略是一个选项**（`DegradeOnStashFullAndDone`，2026-09-21 落）：
   “达到上限且源已到头”时切不切由它决定，判据读法就是它的名字——两个事实都在
   `degradeIfNeeded()` 里显式：越限（`byteLength > MaxStashByteLength`）+ 到头
   （`stash.done`）。**默认 `false` = 不切**：源已到头，数据全集已在这份 stash
   里且不会再涨，落介质只是白搬一趟；“不切”那一支**不需要交代任何状态**
   （stash 仍是落点、自己的 `done` 也在自己身上），读侧照旧按
-  `stash.done && index >= length` 收尾。取 `true` 时是旧行为：照样切换，并且
+  `stash.done && index >= length` 收尾。取 `true` 时照样切换，并且
   **终态随交接走**——stash 已 `done` 就先给新 transferrer `$I.SET_DONE()`，否则
   读器会在前沿等一个永不来的下一笔。两值实测
   `logs/probe-degrade-after-done.mjs`：**读侧结果一致**（`s0 → s1 → close`），
@@ -206,7 +199,7 @@
     **每个拷贝先关读器**（`$I.CLOSE`，两相同一句话）**再**
     `controller.error(终止原因)` + `prune`，不补已缓冲的前缀。
   - **异步段**（Promise 落地时才完成）：`await SOURCE_READER.cancel(终止原因)`
-    （失败由源读取器在发生处派 `warn('source-cancel-failed')`，它**不再上抛**，
+    （失败由源读取器在发生处派 `warn('source-cancel-failed')`，它**不上抛**，
     所以这里既不用吞也不会被打断）→
     `await AGENT.pullingSettled`——**只取时机**，结果归代理侧（见消费代理一节）
     → **按此刻的相位收场**：两侧同形——`$I.SET_DONE()`（封口）+ `$I.DROP()`
@@ -218,13 +211,12 @@
     解（源不再出声时它就一直挂着），放在前面 `destroy()` 直接死锁。而
     cancel 把它**兑现成 `{done:true}`**（规范），所以 destroy 期间那趟 pull
     不可能因源拒——真要拒只可能来自切换那一步（宿主取值器 / 介质构造器），
-    用例 `should dispatch warn(pull-failed) for the in-flight pull` 走的就是
-    这条路径。
+    用例 `should leave the phase unswitched when the in-flight switch fails`
+    走的就是这条路径。
   - 在途 pull 的**结果要吞掉**（2026-09-25 改）：销毁只关心时机，
     `pullingSettled` 内部 `.catch(noop)`。不吞则整个异步段中断——封口与
-    释放都不发生，`destroy()` 还返回一个拒绝的 Promise。**报不在这里**：
-    那条 `warn('pull-failed')` 由代理的 `settlePulling()` 派（见消费代理
-    一节），读侧（拷贝的 `ensure`）照旧收，分流不变。
+    释放都不发生，`destroy()` 还返回一个拒绝的 Promise。在途那笔若落到
+    切换失败上，异常只随读的拒绝走，读侧（拷贝的 `ensure`）照旧收。
 - **相位只读一次**（在所有异步都结束之后）：`cancel` 一被调用
   `finished` 即为真，之后 `ensure` 不可能再起新的一趟 pull，而在途那一笔
   刚被等过——相位在收场那一刻已经冻结，无需快照 + 重读。
@@ -274,8 +266,7 @@
 
 ### Options（配置面）
 
-- **定位**：分发器的**唯一配置面**。`constructor(source)` 只收源，阈值一类的
-  配置成员全部退役（`$I.STASH_BYTE_LIMIT` 及其别名已删）；要读就
+- **定位**：分发器的**唯一配置面**。`constructor(source)` 只收源；要读就
   `Options.Get.*`，要改就 `Options.Tune.*`。
 - **文件**：`Options/index.mjs`（注册表：`OPTIONS` 槽位 + `Tune` / `Get` /
   `install` / `snapshot`）、`Options/Items.mjs`（选项定义表）、
@@ -308,8 +299,7 @@
   处、`degradeIfNeeded` 两项、`observeBacklog` 一项）都不加 `try`——五个
   `TODO` 标记随之删掉。两处后果要知道：`fork()` 是**什么都没建**就抛（拷贝
   未注册、`fork` 事件不派）；pull 里的读取点抛 = 那趟 pull 失败，异常照旧
-  到达读侧（拷贝的 read 拒绝），另外派一条 `warn('pull-failed')`——那是
-  “失败归代理报”的自然结果，不是拦截。
+  到达读侧（拷贝的 read 拒绝），也不出事件——这是放行，不是拦截。
 - **读取时机逐项不同**，写在 `Items.mjs` 每项的头一行注释里（每趟 pull /
   每笔写 / 每个 fork 构造一次）。这条不是风格：`Tune` 之后"为什么不生效"
   只能靠它回答（`ForkHighWaterMark` 只管之后新建的拷贝）。刻度出处：
@@ -318,17 +308,18 @@
 ### SourceConsumptionAgent（消费代理）
 
 - 角色：**唯一的源消费方**（`pulling` 单飞，所有等待者共享同一趟拉取）
-  与**唯一的落点写入者**——“源的事实”经它交给落点，这一趟的失败也归它派
-  （`warn('pull-failed')`，见下）。降级的**触发**也在这里，单独一个成员
+  与**唯一的落点写入者**——“源的事实”经它交给落点，失败不归它报（报告
+  各自在发生处，见异常面一节）。降级的**触发**也在这里，单独一个成员
   `degradeIfNeeded()`（stash 字节超阈值 →
   `distributor.$I.DEGRADE()`；执行仍在结构侧，见 Distributor 一节）
   ——落点写入（`toStash` / `toTransferrer`）与切换策略分开写，阈值这种
   分发器策略一眼看得见。
 - **相位只有一个事实来源**：`distributor.degraded` 观察自己的
-  `$I.TRANSFERRER` 是否落位，代理不再发这个事实（也不自己持
-  `degraded` 字段），`pull()` 的分支直接问分发器——两份真相会在降级
-  失败时分叉（`DEGRADE` 抛错则 transferrer 从未落位，而旧字段已置真），
-  后果是后续每趟 pull 都拿 `null[…]` 的 TypeError 顶掉真正的原因
+  `$I.TRANSFERRER` 是否落位，代理不持有它，`pull()` 的分支直接问分发器
+  ——两份真相会在降级
+  失败时分叉（`DEGRADE` 抛错则 transferrer 从未落位，而代理若自己记一份
+  `degraded` 布尔就会已置真），后果是后续每趟 pull 都拿 `null[…]` 的
+  TypeError 顶掉真正的原因
   （实测见 `logs/probe-degrade-failure.mjs`）。
 - **积压告警**：`pull()` 走写侧那一趟在 `$I.WRITE` 之后问一次
   `observeBacklog()`——`pendingByteLength > MaxBacklogWarningByteLength`
@@ -367,11 +358,9 @@
   （`Promise.allSettled([this.pulling])`：天然不拒，不必再带一个吞拒绝的
   `noop`），供 `$I.DESTROY` 收场前对齐。它必须在源 `cancel` **之后**读：那时
   `finished` 已真、`ensure` 起不了新一趟，一次读就够（同“相位只读一次”）。
-- `settlePulling()`：单飞处**先报再抛**（2026-09-25 定）——代理是 pull 的
-  所有者，失败由它派 `warn('pull-failed')`，销毁侧不再替它报（它只取
-  时机）。**报完必须把拒绝还回去**（`throw cause`）：`ensure` 的循环就靠
-  它退出，见陷阱第三条。因此这条 warn 覆盖**任何**一趟失败的 pull，不再
-  只是“销毁时那一笔”。
+- `settlePulling()`：`try` / `finally`（没有 `catch`）——`finally` 复位
+  `pulling`（失败后照样能再拉），拒绝**原样**传下去（`ensure` 的循环靠它
+  退出，见陷阱第三条）。
 - 三条陷阱（留档，改这里之前先读）：
   - 循环在没有封口的情况下提前停 → 读侧拿
     `{ done: false, value: undefined }` 无限空转。
@@ -385,7 +374,7 @@
     0.5s CPU 派 20 万条 warn，`setInterval(100)` 在 6 秒里**一次都没
     跑**——微任务链不排干，宏任务（定时器 / `setImmediate` / IO）全停
     摆，SIGTERM 也进不来。
-- `finished` 的由来：`SourceReader.READ` 在 `CANCELLED` 之后**不再写
+- `finished` 的由来：`SourceReader.READ` 在 `CANCELLED` 之后**不写
   `DONE`**——只看 `done` 的循环会对着已收摊的源每圈 `SET_DONE` 一次。
 
 ### SourceReader（分发器侧拉取装置）
@@ -421,13 +410,10 @@
   `} finally {` 的上一行（附一行原因注释），branches 回到字面 100%。阈值
   （99.5）其实容得下 99.64%，挂标记只为字面好看；代价是这个标记**不能挪**
   （挪一行就失效、回到 99.64%），也删不得。
-- **`get error` / `get reading` 已删（2026-09-23）**：两个读口全仓零引用。
-  `reading` 位保留（用于 `read()` 去重）；`error` 位随后整个移除
-  （2026-09-26，见上一条）。
 - `cancel(reason)`：**单次到达**（唯一调用者 `$I.DESTROY`，且它被
   `$I.DESTROYED` 缓存，不加幂等守卫）；**先置位再转交**平台
   `reader.cancel(reason)`；上游 cancel 回调失败时它先派
-  `warn('source-cancel-failed')`，异常**不再上抛**（收摊面 fail-soft；
+  `warn('source-cancel-failed')`，异常**不上抛**（收摊面 fail-soft；
   规范保证流仍关闭）。**不释放锁**：它只表示我们不要这个源了，
   不表示把流还回去。
 - **收摊后的平台回声不采信**：`cancelled` 为真时 `read()` 直接答
@@ -443,19 +429,13 @@
   交接之后源侧不会再往 stash 写：相位翻转（写侧落位）本身就是那条保证。
 - `done` = 这一层存储自己的内容终态（由落点交接而来）。它是私有 `I` 成员，
   只经上面三个动作与 `get done` 进出。
-- **放开守卫与 `dropped` 读口已删（2026-09-23）**：放开状态只服务守卫，
-  而守卫不必要——`$I.DROP` 的两个触发点（dump 成功、destroy 收场）都在
-  该相位结束之后，此后没有任何路径再触碰 stash。`I.DROPPED` 随之退场
-  （它只被守卫读）。
-  代价：将来若误用，症状从抛 `ChunkStash has been dropped` 变成静默
-  ——写进没人看的数组、`get(index)` 得 `undefined`。
-- **`sealed` 已删（2026-09-20）**：它原本把"触达前沿"与"真 `done`"分开
-  （`index >= length` 且已封口才算完），09-13 起那份判据归 `ensure()` 的
-  就绪契约与位置门；剩下的"整份 dump 前的写面冻结"由**相位翻转**与
-  **dump 成功即 `DROP`** 保证，与这个位无关——实测
-  （`logs/probe-write-face.mjs`）：成功路径载体已被放开（推进去抛
-  `dropped`），失败路径"封口位为真"也照样推得进去。位既非判据也非闸，
-  删掉不变量不变。
+- **放开没有守卫**：`$I.DROP` 的两个触发点（dump 成功、destroy 收场）都在
+  该相位结束之后，此后没有任何路径再触碰 stash，所以不加守卫。代价：将来
+  若误用，症状是静默——写进没人看的数组、`get(index)` 得 `undefined`。
+- **写面没有独立的闸**：写面冻结由**相位翻转**与**dump 成功即 `DROP`**
+  保证；“触达前沿”与“真 `done`”的区分归 `ensure()` 的就绪契约与位置门
+  （见「读路径」）。实测（`logs/probe-write-face.mjs`）：成功路径载体已
+  放开（推进去抛 `dropped`），失败路径也照样推得进去。
 
 ### Reader 术语
 
@@ -466,9 +446,9 @@
 
 - 分叉：内存路径 `BufferChunkReader`（直接读共享 `ChunkStash`）与降级
   家族（`AbstractDegradedChunkReader` + 具体介质侧实现）。
-- **读器只持一个保护级分发器成员**（2026-09-26 改）：`agent` / `stash` /
-  介质实例都不再是字段——各方法按需从它解构（`ENSURE_THEN_READ` 解出
-  `agent`，`chunkStash` / `transferrer` 是从它取的 getter）。读器因此
+- **读器只持一个保护级分发器成员**：`agent` / `stash` / 介质实例都按需从
+  它解构（`ENSURE_THEN_READ` 解出 `agent`，`chunkStash` / `transferrer` 是
+  从它取的 getter）。读器因此
   **手里有分发器**，宿主模板成员在发生处就能派事件（见「异常面」），
   不必再借上一层代报。
 
@@ -498,8 +478,8 @@
   整笔读转发给接替者——转发走接替者的**单纯读** `$I.READ`（这一笔的
   ensure 已由转发者做过），不再重复。
 - **在途读自愈就落在这一眼上**：换读器只可能发生在 `ensure()` 的那趟
-  拉取里（触发降级的那块），所以 `ensure()` 回来后重看一眼就够；不再
-  依赖 DROP 时序。旧实例自己那一个位置照旧前进——它已不被任何 fork
+  拉取里（触发降级的那块），所以 `ensure()` 回来后重看一眼就够，不依赖
+  DROP 时序。旧实例自己那一个位置照旧前进——它已不被任何 fork
   持有，推进无副作用。
 
 #### AbstractDegradedChunkReader（降级 · 生命周期持有者）
@@ -517,8 +497,8 @@
 - **请求初始化**：`$I.REQUEST_INITIALIZE(progress)` 同步播种位置，并把
   `I.INITIALIZED` 置为链体 `I.INITIALIZE`：等 `get dumping`（整份转移
   落地）→ `_I.INITIALIZE` 打开介质 → `I.SYNC()` 进度同步（只能走到介质
-  当时能到的地方）。**失败就是链体 reject**（2026-09-25 改）：不再存进
-  `I.ERROR`——那份状态随本次改动一并删，判据只留一处。两个观测点：
+  当时能到的地方）。**失败就是链体 reject**（2026-09-25 定）：判据只留
+  一处。两个观测点：
   链体自己 catch 到就派 `warn('initialize-failed', cause)` 再原样抛出
   （2026-09-26 下移到读器：报告留在发生处）；需要介质的那一读在
   `I.READ_BACK` 的 `await this[I.INITIALIZED]` 上拿到同一个 cause。
@@ -535,12 +515,11 @@
 
 - 播种 = `$I.REQUEST_INITIALIZE(progress)`：同步
   `CONSUMED_CHUNK_COUNT = progress`，随即在同一步里发起链体。
-  曾用构造器传 `progress`、曾名 `START_INITIALIZE` + once-guard（均已废）。
 - **分发器是唯一调用者**（同一 tick：构造 → 播种 → 交接）；无守卫——
   链体的每个 `await` 都在播种之后，读路径拿到的一定是就位点。
 - `$I.CLOSE`（**键归基类**，降级族覆盖同一个键）：`I.CLOSED` 幂等 →
   **发起式**调 `_I.CLOSE`——**同步抛也经 promise 转手**，失败派
-  `warn('close-failed', cause)`（2026-09-26：不再静默吞；若让它逃出去，
+  `warn('close-failed', cause)`（2026-09-26：不静默吞；若让它逃出去，
   destroy 的遍历会被打断）。**不** `await I.INITIALIZED`：链体里第一句
   就是等 `get dumping`，而 `dumping` 在死盘上永不落地，等它就会把收摊
   一起挂住；`get closed` 暴露状态。
@@ -563,10 +542,10 @@
   存在"把断言写进热路径"的交易。理由：默认流的规范其实允许 `undefined`
   块，但本包的块是 `Buffer`，"洞"冒充数据比报错坏；正确的宿主在被问到时
   本来就有货（位置被接受 = 队列里有或已落介质）。想表达"记录在但没 body"
-  就交**零长 Buffer**。旧 TODO 里"介质侧可答
-  `{value: undefined, done: false}`"那条许可作废。内存族那个角（源被
-  cancel 而没 done 时 `stash.done` 仍假）今天不可达——`destroy()` 先 error
-  掉所有 fork 才 cancel 源；真到了那天得在内存族自己收口。
+  就交**零长 Buffer**。
+  内存族那个角（源被 cancel 而没 done 时 `stash.done` 仍假）今天不可达——
+  `destroy()` 先 error 掉所有 fork 才 cancel 源；真到了那天得在内存族自己
+  收口。
 - **`done` 归介质侧**：内存路径 = `stash.done && index >= stash.length`
   （存储层终态 + 自己的 backlog 闸）；文件路径 = 介质末尾标志 + 位置。
 - 前沿不往下传：降级相位 `ensure()` 只保证"目标已拉取"（落点在队列或
@@ -640,15 +619,15 @@
     我不再持有）、并调抽象 `_I.DROP()` 放开介质。**只由 `destroy()`
     触发**：没有活跃 fork 但未 `terminate()` 的分发器仍能 fork（只是进度
     落后而已），所以“何时完全放开”归宿主——没人要了不等于不能再用。
-    **放开的判据只有一位**（2026-09-23 撤守卫）：`$I.DROP` 可重入，
-    `$I.WRITE` / `$I.PEEK` / `$I.WAIT_POSITION` 不再断言——调用面不出包
+    **放开的判据只有一位**：`$I.DROP` 可重入，
+    `$I.WRITE` / `$I.PEEK` / `$I.WAIT_POSITION` 不加断言——调用面不出包
     （`SYMBOL.TRANSFERRER` 只开 `_I` / `_S`），包内四个入口又都在
-    `$I.DROP` 之前的时序里。与 stash 共有的只剩放开载荷（`PENDING_CHUNKS`
+    `$I.DROP` 之前的时序里。放开载荷与 stash 同形（`PENDING_CHUNKS`
     置空 → drain 靠队列空收手）。一处不同：介质那半**归它自己观测**
     （2026-09-26 改）：`$I.DROP()` 是 async、`await this[_I.DROP]()`，但它
     仍**不被 await**——失败由它就地派 `warn('drop-failed', cause)` 并**只报
-    不抛**（收摊面 fail-soft，2026-09-27 改；也不再经 `ignoreRejection`
-    转手，那个助手早已删掉）；调用方（`$I.DESTROY`）因此连吞都不用。
+    **只报不抛**（收摊面 fail-soft，2026-09-27 改）；调用方（`$I.DESTROY`）因此
+    连吞都不用。
     “不被 await”是硬约束：宿主的放开若挂住（死盘），`destroy()` 不许被一起
     拖住（2026-09-25 定，用例 `should not wait for the medium to release its
 own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永不落地，
@@ -656,7 +635,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
     `SET_DONE()` 由 `destroy()` 先调，拿到的是“先定长后放开”。
 - **放开后的写侧收手**：drain 不需要额外的标志位——队列被置空，下一圈
   自然退出（在途那一笔照旧落介质，落不回来的不管）。`I.FAIL` 改为**首次
-  错误优先**，放开后介质抛出的次生失败不再覆盖源错误 / dump 失败。在途
+  错误优先**，放开后介质抛出的次生失败不覆盖源错误 / dump 失败。在途
   的 `_I.DUMP` **不打断**：宿主若要提前收手，自己查 `get dropped`。
 - 串行链 `I.DRAIN` 单飞：先等 `I.DUMPING` 落地（不然会把接管的这 L 条
   再写一遍），再按 FIFO 一块一块写队列，写一块推一格水位。于是
@@ -668,15 +647,15 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
     排空，挡不住这一趟）。实测 `logs/probe-drain-guard.mjs`：这一支宿主
     `_I.WRITE` 调用数 0、`pendingByteLength` 不清零，对照支排空跑完
     （写 2 笔、队列归零）。
-  - **单飞位在唯一出口复位（2026-09-23）**：闸后的早退曾跳过末尾的
-    `I.DRAINING = null`，把一个已落定的 promise 留在“正在排”的位置上。
-    今天无观测面（`$I.WRITE` 见错即抛，起不了新排空），但那是颗雷：把闸
-    改成 `if (ERROR === null) { while … }` 之后，单飞位在唯一出口复位。
+  - **单飞位在唯一出口复位**：闸写成 `if (ERROR === null) { while … }`
+    而不是早退——否则闸后的早退会把一个已落定的 promise 留在“正在排”的
+    位置上。今天无观测面（`$I.WRITE` 见错即抛，起不了新排空），但那是颗
+    雷。
   - **首句等的是 promise，不是 thunk（2026-09-23）**：
     `await this[I.DUMPING].catch(noop)` 里，等待与吞拒绝都发生在 dump
-    那笔 promise 自身上。**别把它交给 `ignoreRejection()`**：`then()`
-    的参数位要函数，传 promise 会被按恒等处理——等待立刻返回、也没挂上
-    handler，闸于是在错误置位前被检查，失败 dump 留下的队列会被写掉。
+    那笔 promise 自身上——**两件事不能分给两处**：`then()` 的参数位要
+    函数，传 promise 会被按恒等处理，等待立刻返回、也没挂上 handler，
+    闸于是在错误置位前被检查，失败 dump 留下的队列会被写掉。
     `should keep the chunks a failed dump left undrained` 就是这条的哨兵
     （写错时宿主 `_I.WRITE` 2 笔、期望 0），`logs/probe-drain-guard.mjs`
     的 P1 支同理。
@@ -701,13 +680,13 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
 - **积压策略（2026-09-16 定）**：队列**不设上限、不做闸门**。写**挂住**
   不闩错（继续积压，撑多久由宿主内存与分发器生命周期决定），写**报错**
   才闩 `I.ERROR`。积压只观察，计数不外露。
-- **闩错的拒绝范围（2026-09-20 定；此前写作"此后所有读拒绝"）**：只否决
+- **闩错的拒绝范围（2026-09-20 定）**：只否决
   **未被接受**的位，已被接受的位继续发——内存还拿得到的块不因介质坏了
   作废。`FAIL` 仍要结算门，是因为未被接受的等待者必须当场拒掉，不能
   留着悬挂。真需要介质的那一读仍然失败：越过前沿后下一次拉取的
   `$I.WRITE` 同步抛同一个错误（写侧不再收活块），从 `pull()` 一路拒到
   消费者——流照样报错，只是失败点推到"这位真的需要介质"处（源不再交块
-  时与健康状态一样等，不额外抛）。dump 失败因此不再等于整份前缀作废：
+  时与健康状态一样等，不额外抛）。dump 失败因此不等于整份前缀作废：
   接管的 L 条还在队列里，各拷贝按自己的播种位置读到底再拒。
 - **门的成本（记录）**：过门 445–483ns/笔，对"命中即返回"153ns（整条读
   路径 ~3.0µs 对 ~2.6µs，约 −15%；promise 构造本身约 20ns）。为这 15%
@@ -726,7 +705,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   **切换之后新堆上去、还没落盘**的字节（`$I.WRITE` 加、drain 每写一笔减、
   `$I.DROP` 归零）；**交接过来那份不算**——它本来就在阈值附近，算进去等于
   每次正常降级都误报一次。它是“写侧落后了多少”的度量，也是宿主的积压信号。
-- 实例与 `ChunkStash` 1:1，因此状态就是普通字段，不再用 WeakMap /
+- 实例与 `ChunkStash` 1:1，因此状态就是普通字段，不需要 WeakMap /
   WeakSet 按 stash 键控。抽象钩子 `_I.DUMP` / `_I.WRITE` / `_I.DROP` 由下游
   实现，静态侧 `_S.PARSE_ARGUMENTS` 基类已给恒等实现（覆盖可选；入参是整份
   参数数组而非摊平，receiver 是写侧类，预置构造参数时经它归一）。
@@ -738,7 +717,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   基类静态抽象）；分发器在降级时构造实例、立刻把**自己**挂上去
   （`$I.SET_DISTRIBUTOR`，三个宿主成员的就地报告靠它）、再持有
   （`$I.TRANSFERRER`）、
-  再交接给各拷贝的新读取器。实例与 `ChunkStash` 1:1，因此不再需要
+  再交接给各拷贝的新读取器。实例与 `ChunkStash` 1:1，因此不需要
   一次性守卫与 `instanceof` 校验。转存产物可留在实例自己的字段里。
 
 ### ForkedReadableStream（流面）
@@ -823,7 +802,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   `_I.WRITE` / `_I.DUMP` / `_I.DROP` · 非 Buffer 的 chunk。**校验口例外**：
   `Checker` 只出判词、不抛。
 - **构造器抛的后果**（2026-09-26 定）：它落在某一趟 pull 里 ⇒ 那趟 pull
-  失败（异常照旧到读侧 + 派 `pull-failed`），而 `$I.TRANSFERRER` 未落位 ⇒
+  失败（异常照旧到读侧，无事件），而 `$I.TRANSFERRER` 未落位 ⇒
   `degraded` 仍 `false`，下一趟 pull 照旧重试切换（不锁死）。
 - **报告点跟着发生处**（2026-09-26）：降级读者的四个宿主模板成员在**调用
   现场**派事件，派发器就是分发器（读器构造时就拿到了它）：
@@ -831,8 +810,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   `_I.READ` → `read-failed` · `_I.CLOSE` → `close-failed`（同步抛也经
   promise 转手）。前三个**报完照旧抛出**（控制流不变）；`close-failed`
   是即发即弃，只报不抛。源读取器同样：平台 `read()` 拒 → 它派
-  `source-read-failed` 再原样抛出（那趟 pull 于是照旧失败，代理另派一条
-  `pull-failed`——一个因两条事件、两码两义，按“重复上报不去抖”不去重）；
+  `source-read-failed` 再原样抛出（那趟 pull 于是照旧失败）；
   平台 `cancel()` 拒 → 它派 `source-cancel-failed`，**只报不抛**（收摊面
   fail-soft）。**出口唯一**（2026-09-26 收口）：以上所有 `warn` 都
   经分发器的受保护成员 `$I.WARN(code, payload)` 派发——出口一处，
@@ -842,11 +820,10 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   分发器），于是三个宿主模板成员各自就地上报：
   `_I.DUMP` → `dump-failed`（载荷是**宿主原始因**；包装错随后照旧抛给
   调用链）· `_I.WRITE` → `write-failed`（闩住后仍会在后续每趟 pull 里由
-  `$I.WRITE` 同步抛、代理派 `pull-failed`）· `_I.DROP` → `drop-failed`
+  `$I.WRITE` 同步抛）· `_I.DROP` → `drop-failed`
   后只报不抛（收摊面 fail-soft）。
 - **重复上报不去抖**：与 `backlog` 同族——一个因（dump 被拒）可以让每个
-  降级 reader 各派一条 `initialize-failed`；闩住的介质错误会让之后每趟消费
-  各派一条 `pull-failed`。水准信号，限频归宿主。
+  降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。
 - **漏斗唯一**：所有内向失败统一从拷贝流的 `read()` 抛出并拒该拷贝（监听器
   抛不在此列，已实测）。
 
@@ -859,40 +836,10 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   不算读回（没碰介质）；定位（`_I.SEEK` 跨边界）也不取货，它是读回前的
   归位。这个名字对着 write-back：入队即返回是回写，没命中缓冲时就把块
   **读回**来。
-- 内存→磁盘阶段切换称"降级（degraded）"（原 Fallback 术语已弃）。
+- 内存→磁盘阶段切换称“降级（degraded）”。
 
 ## 决策日志（演进 · 按时间追加）
 
 > 不稳定、演进中的决策先在此按时间（`### YYYY-MM-DD`）追加，保留
 > 来龙去脉；一旦收敛为确定结论，不定期执行"结论压缩"——并入上方
 > 对应主题的"当前有效结论"，并从本节移除。
->
-> 最近一次压缩：2026-09-19——09-16 积压策略、09-17 位置门、09-18 注册表、
-> 09-18/09-19 两档生命周期（terminate 关闸门 / destroy 封口切断源）
-> 已并入上方主题。
-
-### 2026-09-09 — 定位与生命周期收敛（已压缩入上方，留作示例）
-
-- 演进弧：`START_INITIALIZE` + once-guard → 构造器播种 `progress` →
-  `REQUEST_INITIALIZE(progress)` 播种、删 guard → 初始化/关闭迁降级
-  家族、基类收缩为"有位置的读头"。
-- SEEK：基类 `_I.SEEK`（配 `$I.SKIP`）→ 迁降级家族为寻道原语，介质侧
-  自实现按位定位；`CONSUMED_CHUNK_COUNT` 承载 fork 绝对位置。
-- 现结论见上方：ChunkReader 家族 / 初始化与关闭 / 读路径 / 切换定位。
-
-### 2026-09-10 — 前沿语义收敛（已压缩入上方，留作演进记录）
-
-- `$I.READ` 定位：per-fork 驱动 → 确认为"前沿消费"接触点，且是
-  "推进消费 / 判定是否再进一步"的唯一作用域；`done` 归 `_I.READ`。
-- 内存路径末尾标志落定：`ChunkStash` 增加保护级封口 `$I.SEALED`，把
-  "触达前沿"与"真 `done`"分开（`index >= length` 且已封口才算完）。
-- 09-13 修订：封口改归"整份 dump 前的冻结"，真 `done` 改由 `stash.done`
-  与自身位置判定，前沿改由 `ensure()` 的就绪契约吸收；下列"待收敛"两项
-  由此收口。
-- 09-20 删除：`sealed` 整套移除（`I.SEALED` / `$I.SEAL` / `get sealed` /
-  调用点）——两半职责早已各有归属（真 `done` 归 `stash.done` + 位置，写面
-  冻结归相位翻转 + dump 成功即 `DROP`），这个位既非判据也非闸。
-- 待收敛（当时）：前沿信号形态、`$I.READ` 的等待方式，以及它与共享
-  取块层"确保可用"的衔接。
-
-现结论见上方：「读路径」/「SourceConsumptionAgent（消费代理）」。

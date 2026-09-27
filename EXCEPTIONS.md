@@ -1,8 +1,8 @@
 # 异常面（异常发生后的行为设计）
 
-> 本文是**规范**：一次异常发生之后，系统各部分**应当**怎样表现。正常路径
-> 的语义看 `DESIGN.md`，逐条决策的来历与实测证据看 `DEV.md` 的「异常面」
-> 一节。本文只回答"出了事之后会怎样"，不重复那两处的论证。
+> 本文是**规范**：一次异常（含“慢”带来的危险状态）出现之后，系统各部分
+> **应当**怎样表现。正常路径的语义看 `DESIGN.md`，逐条决策的来历与实测
+> 证据看 `DEV.md` 的「异常面」一节。本文只回答"出了事之后会怎样"。
 
 ## 一、责任划分
 
@@ -30,70 +30,99 @@
   `source-cancel-failed`）。收摊的职责是把摊子收干净，不是继续交付；
   让一个坏介质把 `destroy()` 卡住或拒掉是纯损失。
 
-## 三、逐个异常点：等级 · 发生处 · 观测 · 失败域 · 后处理
+## 三、逐个异常点：等级 · 发生处 · 观测 · 失败域 · 后处理 · 相关测试
 
 ### 等级定义
 
 等级（L1 已定；L2–L4 是当前口径，待你定名）：
 
 - **\[L1\] 可忽略级**：抓到了该异常，但只提供观测——不影响分发器层状态，
-  也不影响业务进度。
+  也不影响业务进度。**不靠 `try` 块的也算**：由“慢”带来的危险状态
+  （`backlog`：积压超阈值）同样落这一级。
 - **\[L2\] 局部级**：一个拷贝（或它自己的读器）出局，其他拷贝与分发器照旧。
 - **\[L3\] 闩错级**：共享的写侧实例闩错、不可逆；此后只剩已经捕获的前缀。
 - **\[L4\] 分发器级**：全部拷贝一起——源坏之后，要新数据的读都拒。
-- **后处理**：**\[L1\] 一律“无”**（只观测，不需要处置）；**\[L2\]–\[L4\] 一律
-  `TODO`**，逐条讨论后再填。
+- **后处理**：**\[L1\] 一律“无”**——只观测；资源层面的未了账（源侧
+  清理没跑完、介质句柄没放开、内存涨上去）归宿主自己记账。
+  **\[L2\]–\[L4\] 一律 `TODO`**，逐条讨论后再填。
 
 ### 所有异常点
 
-- **\[L1\]** · **源 `cancel()` 拒**
+- **\[L1\]** · **`source-cancel-failed`**（源 `cancel()` 拒）
   - 观测：`source-cancel-failed`，一次。
   - 失败域：无。
-  - 后处理：无。
-- **\[L1\]** · **宿主 `_I.DROP` 拒**
+  - 后处理：无（只观测；源侧清理有没有跑完归宿主自己记账）。
+  - 相关测试：`Distributor/destroy/promise.test.mjs` ›
+    `should dispatch warn(source-cancel-failed) when it refuses`。
+- **\[L1\]** · **`drop-failed`**（宿主 `_I.DROP` 拒）
   - 观测：`drop-failed`。
   - 失败域：无。
-  - 后处理：无。
-- **\[L1\]** · **宿主 `_I.CLOSE` 拒**
+  - 后处理：无（只观测；介质句柄是否真放开归宿主自己兜）。
+  - 相关测试：`Distributor/destroy/promise.test.mjs` ›
+    `should dispatch warn(drop-failed) when the release fails`；
+    `Transferrer.test.mjs` ›
+    `should swallow a failure of the release`、
+    `should swallow a synchronous failure of the release`。
+- **\[L1\]** · **`close-failed`**（宿主 `_I.CLOSE` 拒）
   - 观测：`close-failed`。
   - 失败域：无。
-  - 后处理：无。
-- **\[L2\]** · **那趟 pull 失败**
-  - 观测：`pull-failed`，每趟一条。
-  - 失败域：该拷贝。
-  - 后处理：TODO（待逐条讨论）。
-- **\[L2\]** · **宿主 `_I.INITIALIZE` 拒**
+  - 后处理：无（只观测；读器 / 介质句柄是否真关好归宿主自己兜）。
+  - 相关测试：`Distributor/destroy/promise.test.mjs` ›
+    `should dispatch warn(close-failed) when the medium refuses to close`；
+    `ForkedReadableStream.test.mjs` ›
+    `should dispatch warn(close-failed) when the medium refuses to close`。
+- **\[L1\]** · **`backlog`**（积压超阈值——“慢”带来的危险状态）
+  - 观测：`backlog`，超阈值后每写一笔一条（不去抖）。
+  - 失败域：无（不改状态、不挡读、不反压源）。
+  - 后处理：无（只观测；内存代价归宿主——限频 / 扩容 / 重建都是宿主的决定）。
+  - 相关测试：`Distributor/degraded/warn.test.mjs` ›
+    `should dispatch warn(backlog) once the backlog is over the limit`。
+- **\[L2\]** · **`initialize-failed`**（宿主 `_I.INITIALIZE` 拒）
   - 观测：`initialize-failed`，每个降级读器一条。
   - 失败域：该读器，永久。
   - 后处理：TODO（待逐条讨论）。
-- **\[L2\]** · **宿主 `_I.SEEK` 拒**
+  - 相关测试：`Distributor/degraded/warn.test.mjs` ›
+    `should dispatch warn(initialize-failed) on the switch`；
+    `Distributor/fork.test.mjs` ›
+    `should dispatch warn(initialize-failed) after the switch`；
+    `Distributor/degraded/phase.test.mjs` ›
+    `should reject the read that needs the medium when the medium
+refused to open`。
+- **\[L2\]** · **`seek-failed`**（宿主 `_I.SEEK` 拒）
   - 观测：`seek-failed`，每次定位一条。
   - 失败域：该拷贝（读器不闩，但那个拷贝已摘牌）。
   - 后处理：TODO（待逐条讨论）。
-- **\[L2\]** · **宿主 `_I.READ` 拒**
+  - 相关测试：`ForkedReadableStream.test.mjs` ›
+    `should dispatch warn(seek-failed) when the medium seek throws`。
+- **\[L2\]** · **`read-failed`**（宿主 `_I.READ` 拒）
   - 观测：`read-failed`，每次读回一条。
   - 失败域：该拷贝。
   - 后处理：TODO（待逐条讨论）。
-- **\[L2\]** · **宿主取值器抛**
-  - 观测：`pull-failed`，落在那一趟 pull 上。
-  - 失败域：那趟 pull。
-  - 后处理：TODO（待逐条讨论）。
-- **\[L2\]** · **宿主构造器 / 静态成员抛**
-  - 观测：`pull-failed`，落在那一趟 pull 上。
-  - 失败域：那趟 pull，**可重试**（`degraded` 仍为假，下一趟重试切换）。
-  - 后处理：TODO（待逐条讨论）。
-- **\[L3\]** · **宿主 `_I.DUMP` 拒**（载荷是宿主原始因）
+  - 相关测试：`ForkedReadableStream.test.mjs` ›
+    `should dispatch warn(read-failed) when the medium read throws`。
+- **\[L3\]** · **`dump-failed`**（宿主 `_I.DUMP` 拒，载荷是宿主原始因）
   - 观测：`dump-failed`。
   - 失败域：写侧实例（闩错，不可逆）。
   - 后处理：TODO（待逐条讨论）。
-- **\[L3\]** · **宿主 `_I.WRITE` 拒**（每个写侧实例首次一条）
+  - 相关测试：`Distributor/degraded/warn.test.mjs` ›
+    `should dispatch warn(dump-failed) when the dump fails`。
+- **\[L3\]** · **`write-failed`**（宿主 `_I.WRITE` 拒，每个写侧实例首次一条）
   - 观测：`write-failed`。
   - 失败域：写侧实例（闩错，不可逆）。
   - 后处理：TODO（待逐条讨论）。
-- **\[L4\]** · **源 `read()` 拒**（源基础设施坏）
+  - 相关测试：`Distributor/degraded/warn.test.mjs` ›
+    `should dispatch warn(write-failed) when the write fails`。
+- **\[L4\]** · **`source-read-failed`**（源 `read()` 拒，源基础设施坏）
   - 观测：`source-read-failed`，每次一条。
-  - 失败域：分发器。要新数据的读都拒，已经拉回来的部分照发。
-  - 后处理：TODO（待逐条讨论）。
+  - 失败域：分发器。
+  - 后处理：**已存在的拷贝不被主动终结**——前缀内的位置照读
+    （`ensure` 不进循环），一旦要 `pulledChunkCount` 之外的那一块就起一趟
+    pull ⇒ 那个拷贝**自己**拒，其他拷贝不受影响。与 `terminate()` /
+    `destroy()` 的区别：那两条才是主动终结所有拷贝。
+  - 相关测试：`ForkedReadableStream.test.mjs` ›
+    `should reject with the source error`、
+    `should dispatch warn(source-read-failed) when the source fails`、
+    `should keep the prefix of every copy when the source breaks`。
 
 ### 其他说明
 
@@ -106,6 +135,13 @@
 - **挂 ≠ 崩**：介质"永不落地"（死盘）时位置门不结算，该拷贝的 read 一直
   pending（不拒也不给数据），只能靠消费者 cancel 那个拷贝；`destroy()`
   不陪它。
+- **不给码的失败**：宿主取值器抛、切换期的写侧构造器 / 降级读器构造器 /
+  `_S` 静态成员抛——只有那个拷贝 read 的拒绝，`degraded` 保持为假、下一趟
+  pull 重试切换。守它的三条用例：`ForkedReadableStream.test.mjs` ›
+  `should reject the read when an option getter throws`、
+  `Distributor/degraded/phase.test.mjs` ›
+  `should stay false, rejecting the read, when the host constructor throws`、
+  `should stay false, rejecting the read, when the family is unfinished`。
 
 ## 四、恢复归属
 
@@ -122,18 +158,15 @@
 - **出口唯一**：所有 `warn` 都经分发器的受保护成员 `$I.WARN(code, payload)`
   派发；每个 code 只有**一个**报告点，且都落在**发生处**（没有代派）。
 - **不去抖、不聚合、不发回落事件**：同一个因可以出多条（每次尝试一条），
-  这些是水准信号，限频与计数归宿主。`backlog` 是唯一的"带量"信号
-  （payload = 当前积压字节），不采样就没有事件，最后一条也不是峰值；
-  它的后处理 = 限频 / 扩容 / 重建（不会自己回落）。
-- **11 个 code**：`backlog`※ / `close-failed` / `drop-failed` /
-  `dump-failed` / `initialize-failed` / `pull-failed` / `read-failed` /
-  `seek-failed` / `source-cancel-failed` / `source-read-failed` /
-  `write-failed`（※ 不是异常，是观测信号）。
+  这些是水准信号，限频与计数归宿主。`backlog` 是唯一的“带量”信号
+  （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
+  见 §三）；不采样就没有事件，最后一条也不是峰值。
+- **10 个 code**：`backlog` / `close-failed` / `drop-failed` /
+  `dump-failed` / `initialize-failed` / `read-failed` / `seek-failed` /
+  `source-cancel-failed` / `source-read-failed` / `write-failed`。
 - **命名约定**：**源流自身发生的失败一律带 `source-` 前缀**——现在只有两个，
   报告点都在源读取器里：`source-read-failed`、`source-cancel-failed`。
-  读侧 / 写侧的失败按发生处命名；`pull-failed` 不带前缀，因为它是**那一趟
-  pull 的综合归宿**（载荷可能是源、是介质的闩错回放、或宿主取值器），
-  加前缀会把它的覆盖面说窄。
+  读侧 / 写侧的失败按发生处命名。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 

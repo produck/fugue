@@ -98,7 +98,7 @@ describe('ForkedReadableStream', () => {
         await assert.rejects(drain(distributor.fork()), cause);
       });
 
-      it('should dispatch warn(source-read-failed) then warn(pull-failed)', async () => {
+      it('should dispatch warn(source-read-failed) when the source fails', async () => {
         const cause = new Error('the source failed');
         const warns = [];
         const source = new ReadableStream({
@@ -116,10 +116,69 @@ describe('ForkedReadableStream', () => {
 
         assert.deepEqual(
           warns.map((warn) => warn.code),
-          ['source-read-failed', 'pull-failed'],
+          ['source-read-failed'],
+        );
+        assert.equal(warns[0].payload, cause);
+      });
+
+      it('should keep the prefix of every copy when the source breaks', async () => {
+        const cause = new Error('the source failed');
+        const warns = [];
+        let pulls = 0;
+        const source = new ReadableStream({
+          pull(controller) {
+            if (pulls++ === 0) {
+              controller.enqueue(Buffer.from('a'));
+
+              return;
+            }
+
+            throw cause;
+          },
+        });
+        const distributor = new TestDistributor(source);
+        const first = distributor.fork().getReader();
+        const second = distributor.fork().getReader();
+
+        distributor.addEventListener('warn', (event) => {
+          warns.push(event.detail);
+        });
+
+        assert.equal((await first.read()).value.toString(), 'a');
+        await assert.rejects(first.read(), cause);
+
+        assert.equal((await second.read()).value.toString(), 'a');
+        await assert.rejects(second.read(), cause);
+
+        assert.deepEqual(
+          warns.map((warn) => warn.code),
+          ['source-read-failed', 'source-read-failed'],
         );
         assert.equal(warns[0].payload, cause);
         assert.equal(warns[1].payload, cause);
+      });
+
+      it('should reject the read when an option getter throws', async () => {
+        const cause = new Error('the getter failed');
+        const distributor = new TestDistributor(makeSource(['a']));
+        const warns = [];
+        const reader = distributor.fork().getReader();
+        let reads = 0;
+
+        distributor.addEventListener('warn', (event) => {
+          warns.push(event.detail);
+        });
+
+        Options.Tune.MaxStashByteLength(distributor, () => {
+          if (reads++ === 0) {
+            return 8;
+          }
+
+          throw cause;
+        });
+
+        await assert.rejects(reader.read(), cause);
+        assert.deepEqual(warns, []);
       });
 
       it('should dispatch warn(read-failed) when the medium read throws', async () => {
