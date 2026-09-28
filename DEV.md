@@ -155,7 +155,7 @@
   抛异常的访问器都判否）。
 - 共享 stash 由分发器 create/持有并注入各读取器；内容生命周期（`$I.PUSH()` /
   `$I.SET_DONE()`）归 `SourceConsumptionAgent`；dump→drop
-  归写侧（`START_DUMPING` 成功自己 DROP），内存相的 drop 归 `destroy()`。
+  归写侧（`I.DUMP` 成功自己 DROP），内存相的 drop 归 `destroy()`。
 - 降级：**触发在消费代理**（stash 字节超过构造时定下的阈值），**执行在分发器** `$I.DEGRADE`——
   构造写侧实例（按读器家族 `_S.TRANSFERRER_CTOR` + 预置构造参数）、
   把它挂上分发器（元件的 `$I.SET_DISTRIBUTOR`）、执行其 `dump`、
@@ -257,7 +257,7 @@
 - **源被 `cancel` 后在途那笔读不是拒绝，是 `{done: true}`**：
   `SOURCE_READER.READ` 的 catch 因 `I.CANCELLED` 已置位而不落错误。所以
   降级在途读被 destroy 撞上时走的是“值 / `done`”那一支：`WAIT_POSITION`
-  以 `accepted=false` 且 `I.ERROR === null` 放行（不抛）、继续进宿主
+  以 `accepted=false` 且没有介质错误放行（不抛）、继续进宿主
   `_I.READ`、以 `done` 落定、`close()` 抛出、`conclude()` 不走。
   所以降级相的真实 destroy 收尾走的是“值 / `done`”支；失败支要介质当场
   也在报错（用例用宿主 `_I.READ` 拒绝来安排）。
@@ -294,9 +294,12 @@
 
 - **定位**：分发器的**唯一配置面**。`constructor(source)` 只收源；要读就
   `Options.Get.*`，要改就 `Options.Tune.*`。
-- **文件**：`Options/index.mjs`（注册表：`OPTIONS` 槽位 + `Tune` / `Get` /
+- **文件**：`Options/index.mjs`（门面：转发 `Accessor`、导出 `Asset`）、
+  `Options/Accessor.mjs`（注册表：`OPTIONS` 槽位 + `Tune` / `Get` /
   `install` / `snapshot`）、`Options/Items.mjs`（选项定义表）、
-  `Options/Assert.mjs`（断言实现）。**不在类设计规则体系内**：没有
+  `Options/Assert.mjs`（断言实现）、`Options/Asset.mjs`（以分配器为参、
+  调若干 `Tune` 重新映射语义的函数族：`noRetry` / `unlimitedRetry` /
+  `noDumpRetry` …）。**不在类设计规则体系内**：没有
   `_Symbol.mjs` / `_External.mjs`，自带本地槽位符号，也不进
   `Distributor/index.mjs` 的“只导出类”约定。
 - **形状**：每个分发器实例挂一张 **bag**（普通对象，键 = `item.name`，
@@ -314,7 +317,8 @@
     `Cannot access 'items' before initialization`。默认值里要复用另一项
     就读 bag（`(options) => options.X(options)`）；**不能**写
     `Get.X(bag)`——`Get` 内部读槽位，传 bag 进去是 `undefined`。
-- **断言**：`Assert.NonNegativeInteger` / `Boolean` / `HighWaterMark`。
+- **断言**：`Assert.NonNegativeInteger` / `Boolean` / `HighWaterMark` /
+  `NonNegativeIntegerOrInfinity`。
   `Tune` 是**唯一断言点**（坏值不落袋），`install` 不断言——默认值信任
   作者。`HighWaterMark` 按规范口径：先 `ToNumber` 再判，`NaN`/负数抛
   `RangeError`，`Symbol`/`BigInt` 抛 ToNumber 中止的 `TypeError`；归一
@@ -330,6 +334,13 @@
   每笔写 / 每个 fork 构造一次）。这条不是风格：`Tune` 之后"为什么不生效"
   只能靠它回答（`ForkHighWaterMark` 只管之后新建的拷贝）。刻度出处：
   `logs/measure-options.mjs` / `logs/measure-options2.mjs`。
+- **四个重试选项还没接线（2026-09-28）**：`MaxDumpRetryCount` /
+  `MaxDrainRetryCount` 默认都是 `Infinity`（无限重试），断言走
+  `NonNegativeIntegerOrInfinity`（`Infinity` 是唯一非整数合法值）；
+  `DumpRetryInterval` / `DrainRetryInterval` 是两次尝试之间的毫秒数，
+  断言 `NonNegativeInteger`，默认 **10**（个数默认无限，间隔就不能默认 0
+  ——否则死盘上是自旋）。两侧的重试循环还没落，所以读取时机那几行注释仍
+  写 TODO。
 
 ### SourceConsumptionAgent（消费代理）
 
@@ -411,7 +422,7 @@
   锁挡死（锁定即拒，且不尝试取消）。前提：一个源只喂一个分发器、一个
   分发器一生只用一个 reader。对外可见的外观是 `stream.locked` 恒为 true。
 - 两个事实位互斥穷尽：`done`（源到头，拉取触发）· `cancelled`（我们下过
-  收摊令，同步置位）。**源错不是位**（2026-09-26 移除 `I.ERROR`）：它只以
+  收摊令，同步置位）。**源错不是位**（2026-09-26 移除 `I.SOURCE_ERROR`）：它只以
   两样东西存在——平台 `read()` 的拒绝，与发生处那条
   `warn('source-read-failed')` 的 payload；存一个没人读的位是死状态。
   对“源还能不能拉”这一个问题，对外只给一个读口：`finished`
@@ -625,9 +636,9 @@
     **接管** stash 的整份块列表（同一批对象，只加引用，不复制）——此刻
     队列必空，因为 `$I.DUMP` 是队列的第一个写入者（transferrer 刚在
     `$I.DEGRADE` 里构造出来就挥手），这条是接管式写法的前提。把那一趟
-    记进 `I.DUMPING` 并返回，本体在 `I.START_DUMPING` 里——同一步里就调
+    记进 `I.DUMPING` 并返回，本体在 `I.DUMP` 里——同一步里就调
     抽象 `_I.DUMP` 开工，成功即 `$I.DROP` 释放载体、清掉接管的这 L 条
-    （已落盘）并把水位一次推满；失败只闩 `I.ERROR` 并结算门，**不 DROP**
+    （已落盘）并把水位一次推满；失败只闩 `I.DUMPING_ERROR` 并结算门，**不 DROP**
     （保留现场待查）。接管的这 L 条仍留在队列里——各读者按自己位置读到
     底，只有永不会有块的位被拒。返回的 Promise 失败时以转义错误拒给，
     唯一消费者是分发器（非阻塞挂 `warn`）。
@@ -661,23 +672,31 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
     收摊不陪它。stash 那半是完成式（同步清干净）。它也**不**替分发器封口：
     `SET_DONE()` 由 `destroy()` 先调，拿到的是“先定长后放开”。
 - **放开后的写侧收手**：drain 不需要额外的标志位——队列被置空，下一圈
-  自然退出（在途那一笔照旧落介质，落不回来的不管）。`I.FAIL` 改为**首次
-  错误优先**，放开后介质抛出的次生失败不覆盖源错误 / dump 失败。在途
+  自然退出（在途那一笔照旧落介质，落不回来的不管）。两个错误状态各只
+  有一处置位，放开后介质抛出的次生失败落在 `I.DRAINING_ERROR`，不碰
+  `I.DUMPING_ERROR`（源错 / dump 失败）。在途
   的 `_I.DUMP` **不打断**：宿主若要提前收手，自己查 `get dropped`。
 - 串行链 `I.DRAIN` 单飞：先等 `I.DUMPING` 落地（不然会把接管的这 L 条
   再写一遍），再按 FIFO 一块一块写队列，写一块推一格水位。于是
   "活块永远排在 dump 之后"天然成立。
-  - **错误闸只在循环前，且不是死代码（2026-09-23 实测）**：排空可能起于
+  - **错误状态按域分开（2026-09-28）**：`I.DUMPING_ERROR` = dump 的失败，
+    `I.DRAINING_ERROR` = 排空里写失败的因，**没有共用的 FAIL**，两处各自
+    置位并调一次 `I.SETTLE()`。两者互斥：dump 挂了的排空不再写，所以写
+    失败只在 dump 落地后发生——读侧因此能用 `DUMPING_ERROR ??
+DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
+  - **排空不在 dump 失败后碰队列（2026-09-23 实测）**：排空可能起于
     dump 在途时（读在 dump 期间照常发生），它一进门就挂在首句的
-    `await this[I.DUMPING]` 上；dump 随后失败 → `I.FAIL` 置 `ERROR` →
-    排空恢复时撞上这道闸，队列原样留下（`$I.WRITE` 只挡错误**之后**起的
-    排空，挡不住这一趟）。实测 `logs/probe-drain-guard.mjs`：这一支宿主
-    `_I.WRITE` 调用数 0、`pendingByteLength` 不清零，对照支排空跑完
-    （写 2 笔、队列归零）。
-  - **单飞位在唯一出口复位**：闸写成 `if (ERROR === null) { while … }`
-    而不是早退——否则闸后的早退会把一个已落定的 promise 留在“正在排”的
-    位置上。今天无观测面（`$I.WRITE` 见错即抛，起不了新排空），但那是颗
-    雷。
+    `await this[I.DUMPING]` 上；dump 随后失败 → 排空恢复时撞上循环首项
+    `I.DUMPING_ERROR === null`，队列原样留下（`$I.WRITE` 只挡错误**之后**
+    起的排空，挡不住这一趟）。实测 `logs/probe-drain-guard.mjs`：这一支
+    宿主 `_I.WRITE` 调用数 0、`pendingByteLength` 不清零，对照支排空跑完
+    （写 2 笔、队列归零）；哨兵用例
+    `should keep the chunks a failed dump left undrained`。排空自己那笔
+    失败则由 `break` 收手（写进 `I.DRAINING_ERROR` 供读侧用）。
+  - **单飞位在唯一出口复位**：停止条件写成循环的首项
+    `while (DUMPING_ERROR === null && 队列非空)`，而不是闸后的早退——
+    否则早退会把一个已落定的 promise 留在“正在排”的位置上。今天无观测面
+    （`$I.WRITE` 见错即抛，起不了新排空），但那是颗雷。
   - **首句等的是 promise，不是 thunk（2026-09-23）**：
     `await this[I.DUMPING].catch(noop)` 里，等待与吞拒绝都发生在 dump
     那笔 promise 自身上——**两件事不能分给两处**：`then()` 的参数位要
@@ -688,28 +707,29 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
     的 P1 支同理。
 - 读侧原语（受保护）：`$I.WAIT_POSITION(position)` = 等到该位**已被接受**
   （`position < 水位 + 队列`）或**永远不会有块**（done）。拒绝只落在
-  **永不会有块**那一位：`I.ERROR` 是**介质域**的否决，已被接受的位照发
+  **永不会有块**那一位：`I.DUMPING_ERROR` / `I.DRAINING_ERROR` 是**介质域**
+  的否决，已被接受的位照发
   （块还在队列里，介质坏了不作废手上这一份）。放行时把"已被接受"这个
   判断结果一并交给等待者，判据仍只写一处。`$I.PEEK(position)` 给出
   **还在队列里**的那一块
   （越界/已落介质则 `undefined`，由介质侧判）。等待靠登记表：
   `I.WAITING_POSITION_TABLE` = `Map<resolve, position>`——键是这一位的放行指令，
   值是它等的位。
-  `$I.WAIT_POSITION` 登记后立刻结算一次；改变可读判定的四处（入队、dump
-  落地、`SET_DONE`、`FAIL`）各调一次 `I.SETTLE()`，由它按
-  `position < 水位 + 队列` 或 `DONE` / `ERROR` 放行够号的——没有广播，
-  也没有各自重判。`FAIL` 那一路放行的是**未被接受**的位——它们永不会有
-  块，放行只为当场拒绝；已被接受的位不因 `I.ERROR` 被拒。drain 落盘
+  `$I.WAIT_POSITION` 登记后立刻结算一次；改变可读判定的五处（入队、dump
+  落地、dump 失败、写失败、`SET_DONE`）各调一次 `I.SETTLE()`，由它按
+  `position < 水位 + 队列` 或 `DONE` / 任一错误放行够号的——没有广播，
+  也没有各自重判。失败那两路放行的是**未被接受**的位——它们永不会有
+  块，放行只为当场拒绝；已被接受的位不因错误被拒。drain 落盘
   **不**结算：对 `total = 水位 + 队列`
   恒定，放行不了任何人；门收不到介质进度，也就不可能让它参与可读性。
 - **可读 = 被接受**：在介质上或在队列里都算。介质的进度只决定"从哪儿
   取"（队列 or 介质侧），不决定"能不能取"。
 - **积压策略（2026-09-16 定）**：队列**不设上限、不做闸门**。写**挂住**
   不闩错（继续积压，撑多久由宿主内存与分发器生命周期决定），写**报错**
-  才闩 `I.ERROR`。积压只观察，计数不外露。
+  才闩 `I.DRAINING_ERROR`。积压只观察，计数不外露。
 - **闩错的拒绝范围（2026-09-20 定）**：只否决
   **未被接受**的位，已被接受的位继续发——内存还拿得到的块不因介质坏了
-  作废。`FAIL` 仍要结算门，是因为未被接受的等待者必须当场拒掉，不能
+  作废。两处失败仍要结算门，是因为未被接受的等待者必须当场拒掉，不能
   留着悬挂。真需要介质的那一读仍然失败：越过前沿后下一次拉取的
   `$I.WRITE` 同步抛同一个错误（写侧不再收活块），从 `pull()` 一路拒到
   消费者——流照样报错，只是失败点推到"这位真的需要介质"处（源不再交块
@@ -717,7 +737,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   接管的 L 条还在队列里，各拷贝按自己的播种位置读到底再拒。
 - **门的成本（记录）**：过门 445–483ns/笔，对"命中即返回"153ns（整条读
   路径 ~3.0µs 对 ~2.6µs，约 −15%；promise 构造本身约 20ns）。为这 15%
-  把判据落成两处、并把 `I.ERROR` 检查搬进命中路径，不划算，故保持
+  把判据落成两处、并把两侧错误检查搬进命中路径，不划算，故保持
   "判据只写一处"。终局也不单列分支：放行写成单循环
   `position < 水位 + 队列 || isTerminal`，一处 `delete` + `resolve`，
   让"放行点只有一处"一眼可见。`I.SETTLE` 首行空表早返回。刻度出处：
@@ -725,7 +745,9 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
 - **纯内部对象**：实例由分发器私有持有，**不开观察面**——要看就进
   调试器按符号表读成员（`I.PENDING_CHUNKS` / `I.PENDING_BYTE_LENGTH` /
   `I.WRITTEN_CHUNK_COUNT` / `I.WAITING_POSITION_TABLE` / `I.DRAINING` /
-  `I.DONE` / `I.ERROR` / `I.DROPPED` / `I.DUMPING`）。读口是 getter：
+  `I.DRAINING_ERROR` / `I.DONE` / `I.DROPPED` / `I.DUMPING` /
+  `I.DUMPING_ERROR`）。
+  读口是 getter：
   `dumping` / `done` / `error` / `dropped` / `pendingByteLength`，其余交互
   全走 `$I` 原语。
 - **积压计数 `I.PENDING_BYTE_LENGTH` / `get pendingByteLength`**：只数

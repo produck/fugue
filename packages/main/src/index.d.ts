@@ -168,6 +168,10 @@ type OptionDefinitions = {
   MaxBacklogWarningByteLength: number;
   DegradeOnStashFullAndDone: boolean;
   ForkHighWaterMark: number;
+  MaxDumpRetryCount: number;
+  MaxDrainRetryCount: number;
+  DumpRetryInterval: number;
+  DrainRetryInterval: number;
 };
 
 export type OptionGetters = {
@@ -200,4 +204,20 @@ export declare namespace Options {
 
   const Tune: Readonly<Tune>;
   const Get: Readonly<Get>;
+
+  type AssetName =
+    | 'noDumpRetry'
+    | 'noDrainRetry'
+    | 'unlimitedDumpRetry'
+    | 'unlimitedDrainRetry'
+    | 'noRetry'
+    | 'unlimitedRetry';
+
+  type Asset = {
+    [Name in AssetName]: <Chunk extends Uint8Array>(
+      distributor: Distributor<Chunk>,
+    ) => void;
+  };
+
+  const Asset: Readonly<Asset>;
 }

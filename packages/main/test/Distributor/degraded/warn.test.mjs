@@ -31,6 +31,7 @@ it('should dispatch warn(transferrer-dump-failed) when the dump fails', async ()
 
   distributor.addEventListener('warn', onWarn);
   Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Asset.noRetry(distributor);
 
   await reader.read();
   await settle();
@@ -70,7 +71,41 @@ it('should dispatch warn(transferrer-write-failed) when the write fails', async 
 
   assert.equal(warns.length, 1);
   assert.equal(warns[0].code, 'transferrer-write-failed');
-  assert.equal(warns[0].payload, refused);
+  assert.equal(warns[0].payload.cause, refused);
+  assert.equal(warns[0].payload.retry, 0);
+});
+
+it('should dispatch warn(transferrer-dump-failed) once per attempt', async () => {
+  const cause = new Error('the medium never answers');
+
+  class RefusingTransferrer extends TestTransferrer {
+    [TRANSFERRER.DUMP]() {
+      throw cause;
+    }
+  }
+
+  const family = makeFamily({ medium: RefusingTransferrer });
+  const distributor = new family.Distributor(makeSource(['a']));
+  const reading = distributor.fork().getReader();
+  const warns = [];
+
+  distributor.addEventListener('warn', (event) => warns.push(event.detail));
+  Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Tune.MaxDumpRetryCount(distributor, 1);
+  Options.Tune.DumpRetryInterval(distributor, 0);
+
+  await reading.read();
+  await settle();
+
+  const attempts = warns.filter(
+    (warn) => warn.code === 'transferrer-dump-failed',
+  );
+
+  assert.equal(attempts.length, 2);
+  assert.equal(attempts[0].payload.cause, cause);
+  assert.equal(attempts[1].payload.cause, cause);
+  assert.equal(attempts[0].payload.retry, 0);
+  assert.equal(attempts[1].payload.retry, 1);
 });
 
 it('should dispatch warn(backlog) once the backlog is over the limit', async () => {

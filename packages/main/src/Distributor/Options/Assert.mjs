@@ -9,6 +9,14 @@ export function NonNegativeInteger(value) {
   return value;
 }
 
+export function NonNegativeIntegerOrInfinity(value) {
+  if (value !== Infinity && (!Number.isInteger(value) || value < 0)) {
+    ThrowTypeError('member', 'non-negative integer or Infinity');
+  }
+
+  return value;
+}
+
 export function Boolean(value) {
   if (typeof value !== 'boolean') {
     ThrowTypeError('member', 'boolean');

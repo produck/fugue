@@ -114,7 +114,8 @@ Promise"这一事实：
 - **实测**：dump 30ms 在途时新建 fork，首读 **1ms**（此前 62ms）；整条
   20 块的流只碰介质 1 次（终态那次），介质 20 块、顺序正确、无重复。
 - **剩下的等待**只有"位还没被拉进来"（等拉取）；介质的进度只决定
-  "从哪儿取"，不决定"能不能取"。失败则闩 `I.ERROR`、门只拒绝**未被接受**
+  "从哪儿取"，不决定"能不能取"。失败则闩 `I.DUMPING_ERROR` /
+  `I.DRAINING_ERROR`、门只拒绝**未被接受**
   的位（队列里接管的这批照发），接管的块与 stash 都留着（现场）。
 
 ## 分发器与 ChunkReader 构造协议（已明确）
@@ -192,7 +193,7 @@ Promise"这一事实：
 - **`AbstractTransferrer`（写侧内部抽象，2026-09-07 定稿）**：
   - 受保护实例 `$I.DUMP(chunkStash)`：与 stash 绑定的时刻，**同步返回**；
     微任务里调抽象 `_I.DUMP`，成功则由**本实例** `DROP` 载体并把水位推
-    满；失败闩 `I.ERROR`、结算门、保留现场（接管的
+    满；失败闩 `I.DUMPING_ERROR`、结算门、保留现场（接管的
     这批仍在队列里照发），返回的 Promise 以转义错误拒给分发器挂 `warn`。
   - 抽象实例 `_I.DUMP`（下游实现）：**靠参数拿到 `chunkStash`**，
     负责转存 ChunkStash 到降级目标，返回 PromiseOr。
@@ -250,7 +251,8 @@ Promise"这一事实：
       已解（2026-09-16 换机制）：读侧不再认识 dump，改为统一位置门
       `transferrer.$I.WAIT_POSITION($I.CONSUMED_CHUNK_COUNT)`——`read()` 每次
       先过门，`$I.REQUEST_INITIALIZE` 也在策略 init 前先过门（open/seek
-      时介质必已存在）；dump / 写失败统一闩在 `I.ERROR`，门只以之拒绝
+      时介质必已存在）；dump / 写失败各自闩在 `I.DUMPING_ERROR` /
+      `I.DRAINING_ERROR`，门只以之拒绝
       未被接受的位（已被接受的位照发），所有（含迟到）消费者一致。
 - [x] switching 期间新 `fork()` 的拷贝 → 拿到的 reader 指向何物？
       已解（2026-09-15）：`fork()` 取当前相位字段

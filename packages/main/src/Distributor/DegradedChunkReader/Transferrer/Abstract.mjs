@@ -4,6 +4,9 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { PART, _A } from './_External.mjs';
 import * as Part from '../../Part/index.mjs';
+import * as Options from '../../Options/index.mjs';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AbstractTransferrer extends Part.Abstract {
   static [_S.PARSE_ARGUMENTS](args) {
@@ -19,8 +22,9 @@ class AbstractTransferrer extends Part.Abstract {
   [I.PENDING_BYTE_LENGTH] = 0;
   [I.WAITING_POSITION_TABLE] = new Map();
   [I.DRAINING] = null;
+  [I.DRAINING_ERROR] = null;
   [I.DUMPING] = null;
-  [I.ERROR] = null;
+  [I.DUMPING_ERROR] = null;
   [I.DONE] = false;
   [I.DROPPED] = false;
 
@@ -32,7 +36,10 @@ class AbstractTransferrer extends Part.Abstract {
     }
 
     const total = this[A.I.WRITTEN_COUNT] + this[I.PENDING_CHUNKS].length;
-    const isTerminal = this[I.DONE] || this[I.ERROR] !== null;
+    const isTerminal =
+      this[I.DONE] ||
+      this[I.DUMPING_ERROR] !== null ||
+      this[I.DRAINING_ERROR] !== null;
 
     for (const [release, position] of waitingPositions) {
       if (position < total || isTerminal) {
@@ -42,24 +49,42 @@ class AbstractTransferrer extends Part.Abstract {
     }
   }
 
-  [I.FAIL](cause) {
-    if (this[I.ERROR] === null) {
-      this[I.ERROR] = cause;
+  async [I.DUMP](stash) {
+    const distributor = this[PART.$I.DISTRIBUTOR];
+    const maxRetryCount = Options.Get.MaxDumpRetryCount(distributor);
+    const retryInterval = Options.Get.DumpRetryInterval(distributor);
+    const state = { retry: 0, cause: null };
+
+    while (!this[I.DROPPED]) {
+      try {
+        await this[_I.DUMP](stash);
+        state.cause = null;
+
+        break;
+      } catch (cause) {
+        state.cause = cause;
+        this[PART.$I.WARN]('transferrer-dump-failed', { ...state });
+
+        if (state.retry >= maxRetryCount) {
+          break;
+        }
+
+        state.retry++;
+        await sleep(retryInterval);
+      }
     }
 
-    this[I.SETTLE]();
-  }
+    if (this[I.DROPPED]) {
+      stash[_A.STASH.$I.DROP]();
 
-  async [I.START_DUMPING](stash) {
-    this[I.PENDING_CHUNKS] = [...stash.chunks()];
+      return;
+    }
 
-    try {
-      await this[_I.DUMP](stash);
-    } catch (cause) {
-      this[I.FAIL](cause);
-      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this[PART.$I.WARN]('transferrer-dump-failed', cause);
-      Ow.Error.Common('Failed to dump the ChunkStash.', { cause });
+    if (state.cause !== null) {
+      this[I.DUMPING_ERROR] = state.cause;
+      this[I.SETTLE]();
+
+      return;
     }
 
     const { length } = stash;
@@ -71,10 +96,11 @@ class AbstractTransferrer extends Part.Abstract {
   }
 
   [$I.DUMP](stash) {
-    return (this[I.DUMPING] = this[I.START_DUMPING](stash));
+    this[I.PENDING_CHUNKS] = [...stash.chunks()];
+    this[I.DUMPING] = this[I.DUMP](stash);
   }
 
-  async [I.DRAIN]() {
+  async [I.DRAIN](retry = 0) {
     if (this[I.DUMPING] !== null) {
       await Promise.allSettled([this[I.DUMPING]]);
     }
@@ -82,31 +108,36 @@ class AbstractTransferrer extends Part.Abstract {
     // A drain started while the dump was still in flight wakes up here on a
     //   failed dump — $I.WRITE guards only the drains started after it. The
     //   chunks already queued stay put, for the queue still serves them.
-    if (this[I.ERROR] === null) {
-      while (this[I.PENDING_CHUNKS].length > 0) {
-        const buffer = this[I.PENDING_CHUNKS][0];
+    while (
+      this[I.DUMPING_ERROR] === null &&
+      this[I.PENDING_CHUNKS].length > 0
+    ) {
+      const buffer = this[I.PENDING_CHUNKS][0];
 
-        try {
-          await this[_I.WRITE](buffer);
-        } catch (cause) {
-          this[I.FAIL](cause);
-          // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-          this[PART.$I.WARN]('transferrer-write-failed', cause);
-          break;
-        }
-
-        this[I.PENDING_CHUNKS].shift();
-        this[I.PENDING_BYTE_LENGTH] -= buffer.byteLength;
-        this[A.I.WRITTEN_COUNT] += 1;
+      try {
+        await this[_I.WRITE](buffer);
+      } catch (cause) {
+        // TODO: settle the post-processing of this point (EXCEPTIONS.md).
+        this[PART.$I.WARN]('transferrer-write-failed', { cause, retry });
+        this[I.DRAINING_ERROR] = cause;
+        this[I.SETTLE]();
+        // setTimeout(() => this[I.DRAIN](retry + 1), 10);
+        break;
       }
+
+      this[I.PENDING_CHUNKS].shift();
+      this[I.PENDING_BYTE_LENGTH] -= buffer.byteLength;
+      this[A.I.WRITTEN_COUNT] += 1;
     }
 
     this[I.DRAINING] = null;
   }
 
   [$I.WRITE](chunk) {
-    if (this[I.ERROR] !== null) {
-      Ow.throw(this[I.ERROR]);
+    const error = this[I.DUMPING_ERROR] ?? this[I.DRAINING_ERROR];
+
+    if (error !== null) {
+      Ow.throw(error);
     }
 
     this[I.PENDING_CHUNKS].push(chunk);
@@ -125,9 +156,10 @@ class AbstractTransferrer extends Part.Abstract {
     this[I.SETTLE]();
 
     const accepted = await promise;
+    const error = this[I.DUMPING_ERROR] ?? this[I.DRAINING_ERROR];
 
-    if (!accepted && this[I.ERROR] !== null) {
-      Ow.throw(this[I.ERROR]);
+    if (!accepted && error !== null) {
+      Ow.throw(error);
     }
   }
 
@@ -161,7 +193,7 @@ class AbstractTransferrer extends Part.Abstract {
   }
 
   get error() {
-    return this[I.ERROR];
+    return this[I.DUMPING_ERROR] ?? this[I.DRAINING_ERROR];
   }
 
   get dropped() {

@@ -11,8 +11,12 @@ describe('.options', () => {
     const snapshot = distributor.options;
     const items = [
       'DegradeOnStashFullAndDone',
+      'DrainRetryInterval',
+      'DumpRetryInterval',
       'ForkHighWaterMark',
       'MaxBacklogWarningByteLength',
+      'MaxDrainRetryCount',
+      'MaxDumpRetryCount',
       'MaxStashByteLength',
     ];
 

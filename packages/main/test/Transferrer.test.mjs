@@ -122,6 +122,7 @@ describe('Transferrer', () => {
       const reading = distributor.fork().getReader();
 
       Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Asset.noRetry(distributor);
 
       await reading.read();
       await reading.read();
@@ -137,6 +138,132 @@ describe('Transferrer', () => {
 
       await assert.rejects(reading.read(), cause);
       assert.equal(writes, 0);
+    });
+
+    it('should retry the dump until the option runs out', async () => {
+      const cause = new Error('the medium kept failing');
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class FailingDumpTransferrer extends TestTransferrer {
+        [HOST.DUMP]() {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          throw cause;
+        }
+      }
+
+      const family = makeFamily({ medium: FailingDumpTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxDumpRetryCount(distributor, 1);
+      Options.Tune.DumpRetryInterval(distributor, 0);
+
+      await reading.read();
+      await retried;
+
+      const medium = family.created.at(-1);
+
+      assert.equal(calls, 2);
+      assert.equal(medium.error, cause);
+    });
+
+    it('should land the dump when the medium answers the retry', async () => {
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class HiccupTransferrer extends TestTransferrer {
+        [HOST.DUMP](stash) {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          if (calls === 1) {
+            throw new Error('a hiccup');
+          }
+
+          return super[HOST.DUMP](stash);
+        }
+      }
+
+      const family = makeFamily({ medium: HiccupTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxDumpRetryCount(distributor, 1);
+      Options.Tune.DumpRetryInterval(distributor, 0);
+
+      await reading.read();
+      await retried;
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(calls, 2);
+      assert.equal(medium.error, null);
+      assert.equal(medium.medium[0].toString(), 'a');
+    });
+
+    it('should stop retrying once the transferrer is released', async () => {
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class FailingDumpTransferrer extends TestTransferrer {
+        [HOST.DUMP]() {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          throw new Error('nope');
+        }
+      }
+
+      const family = makeFamily({ medium: FailingDumpTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxDumpRetryCount(distributor, Infinity);
+      Options.Tune.DumpRetryInterval(distributor, 0);
+
+      await reading.read();
+      await retried;
+
+      const medium = family.created.at(-1);
+
+      assert.ok(calls > 1);
+
+      await distributor.destroy();
+
+      const atRelease = calls;
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      assert.equal(calls, atRelease);
+      assert.equal(medium.error, null);
     });
 
     it('should answer zero once the store is released', async () => {
@@ -299,6 +426,7 @@ describe('Transferrer', () => {
       const reading = distributor.fork().getReader();
 
       Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Asset.noRetry(distributor);
 
       assert.equal((await reading.read()).value.toString(), 'a');
       await assert.rejects(reading.read(), cause);

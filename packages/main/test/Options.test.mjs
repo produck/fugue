@@ -5,7 +5,7 @@ import { Options } from '@produck/readable-stream-distributor';
 
 import { drain, makeDistributor, settle } from '#test/baseline.mjs';
 
-const { Tune, Get } = Options;
+const { Tune, Get, Asset } = Options;
 
 const GIB = (1 << 10) ** 3;
 const LIMIT = Number.MAX_SAFE_INTEGER;
@@ -14,6 +14,11 @@ const EXPECTED = {
   NON_NEGATIVE_INTEGER: {
     name: 'TypeError',
     message: /Invalid "member", one "non-negative integer" expected\./,
+  },
+  RETRY_COUNT: {
+    name: 'TypeError',
+    message:
+      /Invalid "member", one "non-negative integer or Infinity" expected\./,
   },
   BOOLEAN: {
     name: 'TypeError',
@@ -170,6 +175,71 @@ describe('Options', () => {
 
         Tune.ForkHighWaterMark(distributor, true);
         assert.equal(Get.ForkHighWaterMark(distributor), true);
+      });
+    });
+    describe('::MaxDumpRetryCount()', () => {
+      it('should refuse a negative value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.MaxDumpRetryCount(distributor, -1);
+
+        assert.throws(attempt, EXPECTED.RETRY_COUNT);
+      });
+
+      it('should refuse a fractional value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.MaxDumpRetryCount(distributor, 1.5);
+
+        assert.throws(attempt, EXPECTED.RETRY_COUNT);
+      });
+
+      it('should accept Infinity', () => {
+        const distributor = makeDistributor();
+
+        Tune.MaxDumpRetryCount(distributor, Infinity);
+
+        assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+      });
+    });
+
+    describe('::MaxDrainRetryCount()', () => {
+      it('should refuse a negative value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.MaxDrainRetryCount(distributor, -1);
+
+        assert.throws(attempt, EXPECTED.RETRY_COUNT);
+      });
+
+      it('should refuse a fractional value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.MaxDrainRetryCount(distributor, 1.5);
+
+        assert.throws(attempt, EXPECTED.RETRY_COUNT);
+      });
+    });
+
+    describe('::DumpRetryInterval()', () => {
+      it('should refuse a negative value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.DumpRetryInterval(distributor, -1);
+
+        assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
+      });
+
+      it('should accept zero', () => {
+        const distributor = makeDistributor();
+
+        Tune.DumpRetryInterval(distributor, 0);
+
+        assert.equal(Get.DumpRetryInterval(distributor), 0);
+      });
+    });
+
+    describe('::DrainRetryInterval()', () => {
+      it('should refuse a negative value', () => {
+        const distributor = makeDistributor();
+        const attempt = () => Tune.DrainRetryInterval(distributor, -1);
+
+        assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
     });
   });
@@ -349,6 +419,62 @@ describe('Options', () => {
 
         assert.equal(Get.ForkHighWaterMark(distributor), '3');
       });
+    });
+
+    describe('::MaxDumpRetryCount()', () => {
+      it('should default to Infinity', () => {
+        assert.equal(Get.MaxDumpRetryCount(makeDistributor()), Infinity);
+      });
+    });
+
+    describe('::MaxDrainRetryCount()', () => {
+      it('should default to Infinity', () => {
+        assert.equal(Get.MaxDrainRetryCount(makeDistributor()), Infinity);
+      });
+    });
+
+    describe('::DumpRetryInterval()', () => {
+      it('should default to 1 second', () => {
+        assert.equal(Get.DumpRetryInterval(makeDistributor()), 1e3);
+      });
+    });
+
+    describe('::DrainRetryInterval()', () => {
+      it('should default to 1 second', () => {
+        assert.equal(Get.DrainRetryInterval(makeDistributor()), 1e3);
+      });
+    });
+  });
+
+  describe('::Asset', () => {
+    it('should answer the retry counts of one side', () => {
+      const distributor = makeDistributor();
+
+      Asset.noDumpRetry(distributor);
+      assert.equal(Get.MaxDumpRetryCount(distributor), 0);
+      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
+
+      Asset.unlimitedDumpRetry(distributor);
+      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+
+      Asset.noDrainRetry(distributor);
+      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+      assert.equal(Get.MaxDrainRetryCount(distributor), 0);
+
+      Asset.unlimitedDrainRetry(distributor);
+      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
+    });
+
+    it('should answer the retry counts of both sides', () => {
+      const distributor = makeDistributor();
+
+      Asset.noRetry(distributor);
+      assert.equal(Get.MaxDumpRetryCount(distributor), 0);
+      assert.equal(Get.MaxDrainRetryCount(distributor), 0);
+
+      Asset.unlimitedRetry(distributor);
+      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
     });
   });
 });

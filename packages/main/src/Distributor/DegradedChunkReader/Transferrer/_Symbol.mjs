@@ -1,33 +1,33 @@
 import { deepFreeze } from '@produck/deep-freeze-enumerable';
 
 const I_DUMPING = Symbol('.#dumping');
+const I_DUMPING_ERROR = Symbol('.#dumpingError');
 const I_PENDING_CHUNKS = Symbol('.#pendingChunks');
 const I_WRITTEN_CHUNK_COUNT = Symbol('.#writtenChunkCount');
 const I_PENDING_BYTE_LENGTH = Symbol('.#pendingByteLength');
 const I_WAITING_POSITION_TABLE = Symbol('.#waitingPositionTable');
 const I_DRAINING = Symbol('.#draining');
+const I_DRAINING_ERROR = Symbol('.#drainingError');
 const I_DRAIN = Symbol('.#drain()');
-const I_ERROR = Symbol('.#error');
 const I_DONE = Symbol('.#done');
 const I_DROPPED = Symbol('.#dropped');
-const I_START_DUMPING = Symbol('.#startDumping()');
+const I_DUMP = Symbol('.#dump()');
 const I_SETTLE = Symbol('.#settle()');
-const I_FAIL = Symbol('.#fail()');
 
 export const I = deepFreeze({
   DUMPING: I_DUMPING,
+  DUMPING_ERROR: I_DUMPING_ERROR,
   PENDING_CHUNKS: I_PENDING_CHUNKS,
   WRITTEN_CHUNK_COUNT: I_WRITTEN_CHUNK_COUNT,
   PENDING_BYTE_LENGTH: I_PENDING_BYTE_LENGTH,
   WAITING_POSITION_TABLE: I_WAITING_POSITION_TABLE,
   DRAINING: I_DRAINING,
+  DRAINING_ERROR: I_DRAINING_ERROR,
   DRAIN: I_DRAIN,
-  ERROR: I_ERROR,
   DONE: I_DONE,
   DROPPED: I_DROPPED,
-  START_DUMPING: I_START_DUMPING,
+  DUMP: I_DUMP,
   SETTLE: I_SETTLE,
-  FAIL: I_FAIL,
 });
 
 const $I_DUMP = Symbol('.$dump()');
