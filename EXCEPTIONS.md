@@ -17,7 +17,8 @@
 
 - **抛不是违约**，而是"这次操作不能完成"的声明。框架不替下游解释失败的
   性质（暂时忙 vs 彻底坏），所以重试、缓冲、换落点这类"包庇"只能由下游
-  在成员内部完成（见第四节）。
+  在成员内部完成（见第四节）；框架自身只在写侧亲自重试，判据见 §三
+  「其他说明」。
 - 框架**不吞数据面的错**：它只承诺三件事——在发生处报告、让拒绝沿自然
   路径走到消费方、让已经拿到的数据照常交付。
 - **拷贝与源同形，且不做二次包装**：分发流与源流给出一致的 chunk 序列与
@@ -47,8 +48,10 @@
 - **\[L3\] 闩错级**：共享的写侧实例闩错、不可逆；此后只剩已经捕获的前缀。
 - **\[L4\] 分发器级**：全部拷贝一起——源坏之后，要新数据的读都拒。
 - **后处理**：**\[L1\] 一律“无”**——只观测；资源层面的未了账（源侧
-  清理没跑完、介质句柄没放开、内存涨上去）归宿主自己记账。**其余逐条讨论
-  后再填**：没定的标 `TODO`，定下的就写在该条的「后处理」里。
+  清理没跑完、介质句柄没放开、内存涨上去）归宿主自己记账。其余各条的
+  「后处理」除 `initialize-failed` 外已定下，口径是同一句：**不重试、
+  不闩、出局**，恢复归宿主在自己的成员内部自吞（§一、§四）；
+  `initialize-failed` 仍标 `TODO`。
 
 ### 所有异常点
 
@@ -83,7 +86,8 @@
     `should dispatch warn(transferrer-backlog) once over the limit`。
 - **\[L2\]** · **`initialize-failed`**（宿主 `_I.INITIALIZE` 拒）
   - 观测：`initialize-failed`，每个降级读器一条。
-  - 失败域：该读器，永久。
+  - 失败域：该读器，**从第一个需要介质的位置起**出局（在那之前队列交付
+    的读不受影响）。
   - 后处理：TODO（待逐条讨论）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
     `should dispatch warn(initialize-failed) on the switch`；
@@ -92,18 +96,22 @@
     `Distributor/degraded/phase.test.mjs` ›
     `should reject the read that needs the medium when the medium
 refused to open`。
-- **\[L2\]** · **`seek-failed`**（宿主 `_I.SEEK` 拒）
-  - 观测：`seek-failed`，每次定位一条。
+- **\[L2\]** · **`degraded-reader-seek-failed`**（宿主 `_I.SEEK` 拒）
+  - 观测：`degraded-reader-seek-failed`，每次定位一条。
   - 失败域：该拷贝（读器不闩，但那个拷贝已摘牌）。
-  - 后处理：TODO（待逐条讨论）。
+  - 后处理：无（立刻抛出：不重试、不闩）：该拷贝出局，判据见 §三
+    「其他说明」；恢复归宿主——只有它知道这次失败有没有动过游标，能自证
+    位置无关就在 `_I.SEEK` 内部吞掉重来。
   - 相关测试：`ForkedReadableStream.test.mjs` ›
-    `should dispatch warn(seek-failed) when the medium seek throws`。
-- **\[L2\]** · **`read-failed`**（宿主 `_I.READ` 拒）
-  - 观测：`read-failed`，每次读回一条。
-  - 失败域：该拷贝。
-  - 后处理：TODO（待逐条讨论）。
+    `should dispatch warn(degraded-reader-seek-failed) on a failed seek`。
+- **\[L2\]** · **`degraded-reader-read-failed`**（宿主 `_I.READ` 拒）
+  - 观测：`degraded-reader-read-failed`，每次读回一条。
+  - 失败域：该拷贝；只发生在队列卸空之后（`PEEK` 未命中才读回）。
+  - 后处理：无（立刻抛出：不重试、不闩）：该拷贝出局，同上；且这块数据
+    已不在框架手里（写成功即从队列卸货），介质是唯一副本，等它恢复不保证
+    那份数据还在原处。
   - 相关测试：`ForkedReadableStream.test.mjs` ›
-    `should dispatch warn(read-failed) when the medium read throws`。
+    `should dispatch warn(degraded-reader-read-failed) on a failed read`。
 - **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒；可重试，
   用尽才闩）
   - 观测：每次尝试一条，载荷 `{ cause, retry }`（`retry` 从 0 起，每条
@@ -166,6 +174,18 @@ refused to open`。
   `Distributor/degraded/phase.test.mjs` ›
   `should stay false, rejecting the read, when the host constructor throws`、
   `should stay false, rejecting the read, when the family is unfinished`。
+- **谁持有那份数据，决定谁亲自重试**：框架亲自重试（dump / drain 的策略）
+  只落在「**框架仍持有那份数据 + 失败发生在队尾**」上——`_I.DUMP` 时字节在
+  stash 快照里、`_I.WRITE` 时块还在 `PENDING_CHUNKS` 里，重试是**重放同一
+  份数据**；用尽即封存，前缀照旧经 `PEEK` 交付（尾断而头不断 ⇒ 渐进降级）。
+  不满足的是 `_I.SEEK` / `_I.READ`：块一写成功即卸货 ⇒ 介质成为**唯一副本**，
+  游标又只有宿主知道（`SEEKED_COUNT` 只是镜像，也没有绝对定位原语可从
+  "未知推进"里回退），失败还落在**消费点**（头）——重试不是重放，是再赌
+  一次，赌输的代价是静默丢块。
+- **共同前提是一条宿主义务**：模板成员抛出 ⇒ 这一笔**没发生**（字节没落、
+  游标没动）。dump / drain 的两次重试立在这条上；违约的代价是介质侧错位
+  或残迹，**框架检测不到**。能自证"位置无关"的宿主，就该在自己的成员
+  内部吞掉重来。
 
 ## 四、恢复归属
 
@@ -187,17 +207,19 @@ refused to open`。
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
 - **10 个 code**：`degraded-reader-close-failed` /
-  `initialize-failed` / `read-failed` / `seek-failed` /
-  `source-cancel-failed` / `source-read-failed` /
-  `transferrer-backlog` / `transferrer-dump-failed` /
-  `transferrer-drop-failed` / `transferrer-write-failed`。
+  `degraded-reader-read-failed` / `degraded-reader-seek-failed` /
+  `initialize-failed` / `source-cancel-failed` /
+  `source-read-failed` / `transferrer-backlog` /
+  `transferrer-dump-failed` / `transferrer-drop-failed` /
+  `transferrer-write-failed`。
 - **命名约定**：**发生处前缀**——源读取器自己发生的失败带 `source-`
   （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的信号
   带 `transferrer-`（现在四个：`transferrer-backlog`、
   `transferrer-dump-failed`、`transferrer-drop-failed` /
   `transferrer-write-failed`）；降级读器自己发生的信号带
-  `degraded-reader-`（现在一个：`degraded-reader-close-failed`）。
-  `initialize-failed` / `read-failed` / `seek-failed` 尚未定前缀。
+  `degraded-reader-`（现在三个：`degraded-reader-close-failed`、
+  `degraded-reader-read-failed` / `degraded-reader-seek-failed`）。
+  `initialize-failed` 尚未定前缀。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 
@@ -206,7 +228,7 @@ refused to open`。
 - 不自动 `terminate()` / `destroy()`：框架不替宿主判断"值不值得继续"。
   全部分发器一起死的路只有两条，都是宿主动作。
 - 不聚合、不去抖、不发"恢复"事件：那会把 `warn` 变成宿主必须实现的状态机。
-- 不翻译宿主异常：唯一一处包装是 dump 失败给调用链的框架错
-  （`Failed to dump the ChunkStash.`），而 `transferrer-dump-failed` 的
-  载荷仍是**宿主原始因**。
+- 不翻译、不包装宿主异常：`warn` 载荷里和沿调用链抛出的都是**宿主给出的
+  那个对象本身**，dump 失败也不例外（`transferrer-dump-failed` 的载荷即
+  将闩住、随后由 `$I.WRITE` / `$I.WAIT_POSITION` 原样抛出的那个因）。
 - 不做失败计数与熔断阈值：没有这样的配置项，也不打算有。

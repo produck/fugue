@@ -865,11 +865,12 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `degraded` 仍 `false`，下一趟 pull 照旧重试切换（不锁死）。
 - **报告点跟着发生处**（2026-09-26）：降级读者的四个宿主模板成员在**调用
   现场**派事件，派发器就是分发器（读器构造时就拿到了它）：
-  `_I.INITIALIZE` → `initialize-failed` · `_I.SEEK` → `seek-failed` ·
-  `_I.READ` → `read-failed` · `_I.CLOSE` → `degraded-reader-close-failed`
-  （同步抛也经 promise 转手）。前三个**报完照旧抛出**（控制流不变）；
-  `degraded-reader-close-failed` 是即发即弃，只报不抛。源读取器同样：
-  平台 `read()` 拒 → 它派
+  `_I.INITIALIZE` → `initialize-failed` ·
+  `_I.SEEK` → `degraded-reader-seek-failed` ·
+  `_I.READ` → `degraded-reader-read-failed` ·
+  `_I.CLOSE` → `degraded-reader-close-failed`
+  （同步抛也经 promise 转手）。前三个**报完照旧抛出**（控制流不变）；后一个
+  是即发即弃，只报不抛。源读取器同样：平台 `read()` 拒 → 它派
   `source-read-failed` 再原样抛出（那趟 pull 于是照旧失败）；
   平台 `cancel()` 拒 → 它派 `source-cancel-failed`，**只报不抛**（收摊面
   fail-soft）。**出口唯一**（2026-09-26 收口）：以上所有 `warn` 都
@@ -878,14 +879,36 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **介质侧同样在发生处**（2026-09-26 收口，代派没有了）：转移器**构造后**
   被分发器挂上自己（元件的 `$I.SET_DISTRIBUTOR`——构造器收的是宿主参数，
   塞不进分发器），于是三个宿主模板成员各自就地上报：
-  `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；包装错随后
-  照旧抛给调用链）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在
-  后续每趟 pull 里由 `$I.WRITE` 同步抛）· `_I.DROP` → `transferrer-drop-failed`
-  后只报不抛（收摊面 fail-soft）。
+  `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；用尽后闩在
+  `I.DUMPING_ERROR`，此后由 `$I.WRITE` / `$I.WAIT_POSITION` 原样抛出，没有
+  包装）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在后续每趟
+  pull 里由 `$I.WRITE` 同步抛，同样原样）· `_I.DROP` →
+  `transferrer-drop-failed` 后只报不抛（收摊面 fail-soft）。
 - **重复上报不去抖**：与 `transferrer-backlog` 同族——一个因（dump 被拒）可以让
   每个降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。
 - **漏斗唯一**：所有内向失败统一从拷贝流的 `read()` 抛出并拒该拷贝（监听器
   抛不在此列，已实测）。
+- **谁持有那份数据，决定谁亲自重试**（2026-09-29 定）：框架只在「它仍持有
+  那份数据 + 失败发生在队尾」的操作上亲自重试——`_I.DUMP` 时字节在 stash
+  快照、`_I.WRITE` 时块还在 `PENDING_CHUNKS`，重试是**重放同一份数据**；
+  用尽即封存，前缀照旧经 `PEEK` 交付（尾断而头不断 ⇒ 渐进降级）。
+  `_I.SEEK` / `_I.READ` 不满足：块一写成功即卸货 ⇒ 介质是**唯一副本**，
+  游标又只有宿主知道（`SEEKED_COUNT` 只是镜像，没有绝对定位原语可从
+  "未知推进"里回退），失败还落在**消费点**（头）——重试不是重放，是再赌
+  一次，赌输即静默丢块。**别用"账本在谁手里"这条推**：`_I.WRITE` 抛时
+  可能已半写进介质，写侧的账同样不在框架手里（2026-09-29 试过，被否）。
+- **四个模板成员共享一条契约**（同日定）：抛出 ⇒ 这一笔**没发生**（字节
+  没落、游标没动）。dump / drain 的两次重试立在这条宿主义务上；违约的代价
+  是介质侧错位或残迹，**框架检测不到**。能自证"位置无关"的宿主，就该在
+  自己的成员内部吞掉重来。
+- **启动期不动介质的"门"在读回**（2026-09-29 定）：`I.INITIALIZED` 全仓只在
+  `I.READ_BACK` 开头被 await，而 `READ_BACK` 只在 `PEEK` 未命中时才进得来
+  ⇒ 队列还攥着的那些位，读路径既不碰介质、也不等 `dumping`、也不受寻道
+  影响；分发器那侧再用 `.catch(noop)` 兜住初始化失败
+  （`Distributor/Abstract.mjs`），于是"初始化失败"只体现为一条 warn 与
+  将来那次真要用介质的读被拒。谁要是把 `await this[I.INITIALIZED]` 提到
+  读路径开头，等于把整条队列交付一起拖进介质域——这是契约性质，不是实现
+  细节。
 
 ## 术语
 

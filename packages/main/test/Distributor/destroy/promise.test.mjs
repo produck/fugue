@@ -102,7 +102,7 @@ describe('>promise', () => {
 
     assert.equal(warns.length, 1);
     assert.equal(warns[0].code, 'source-cancel-failed');
-    assert.equal(warns[0].payload, cause);
+    assert.equal(warns[0].payload.cause, cause);
   });
 
   it('should leave the phase unswitched when the in-flight switch fails', async () => {
@@ -176,7 +176,7 @@ describe('>promise', () => {
       warns.map((warn) => warn.code),
       ['transferrer-drop-failed'],
     );
-    assert.equal(warns[0].payload, cause);
+    assert.equal(warns[0].payload.cause, cause);
   });
 
   it('should dispatch warn(degraded-reader-close-failed) when it refuses', async () => {
@@ -204,6 +204,6 @@ describe('>promise', () => {
       warns.map((warn) => warn.code),
       ['degraded-reader-close-failed'],
     );
-    assert.equal(warns[0].payload, cause);
+    assert.equal(warns[0].payload.cause, cause);
   });
 });

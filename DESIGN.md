@@ -734,10 +734,11 @@ sequenceDiagram
 源流正常结束（源出错已有 `warn('source-read-failed')` 兜着）、全部 fork
 离开等更细粒度事件尚未实现，属规划。`warn` 的
 code 现在有十个：`degraded-reader-close-failed` /
-`initialize-failed` / `read-failed` / `seek-failed` /
-`source-cancel-failed` / `source-read-failed` /
-`transferrer-backlog` / `transferrer-dump-failed` /
-`transferrer-drop-failed` / `transferrer-write-failed`（载荷随 code；
+`degraded-reader-read-failed` / `degraded-reader-seek-failed` /
+`initialize-failed` / `source-cancel-failed` /
+`source-read-failed` / `transferrer-backlog` /
+`transferrer-dump-failed` / `transferrer-drop-failed` /
+`transferrer-write-failed`（载荷随 code；
 框架不装默认处理器，宿主自己接）。
 `destroy()`（强档）不另派事件：它是
 宿主动作，调用方本来就知道——收摊何时完成看它返回的那个 Promise。

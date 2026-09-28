@@ -133,22 +133,41 @@ export declare namespace Event {
     constructor();
   }
 
-  type WarnDetail =
-    | { code: 'transferrer-backlog'; payload: { byteLength: number } }
-    | { code: 'degraded-reader-close-failed'; payload: unknown }
-    | { code: 'transferrer-drop-failed'; payload: unknown }
-    | { code: 'transferrer-dump-failed'; payload: unknown }
-    | { code: 'initialize-failed'; payload: unknown }
-    | { code: 'read-failed'; payload: unknown }
-    | { code: 'seek-failed'; payload: unknown }
-    | { code: 'source-cancel-failed'; payload: unknown }
-    | { code: 'source-read-failed'; payload: unknown }
-    | { code: 'transferrer-write-failed'; payload: unknown };
+  export interface CausePayload {
+    cause: unknown;
+  }
 
-  type WarnCode = WarnDetail['code'];
+  export interface RetryPayload {
+    retry: number;
+    cause: unknown;
+    ok: boolean;
+  }
 
-  class WarnEvent extends DistributorEvent<WarnDetail> {
-    constructor(code: WarnCode, payload: unknown);
+  export interface WarnPayloadMap {
+    'degraded-reader-close-failed': CausePayload;
+    'degraded-reader-read-failed': CausePayload;
+    'degraded-reader-seek-failed': CausePayload;
+    'initialize-failed': unknown;
+    'source-cancel-failed': CausePayload;
+    'source-read-failed': CausePayload;
+    'transferrer-backlog': { byteLength: number };
+    'transferrer-drop-failed': CausePayload;
+    'transferrer-dump-failed': RetryPayload;
+    'transferrer-write-failed': RetryPayload;
+  }
+
+  export type WarnCode = keyof WarnPayloadMap;
+
+  export type WarnPayloadOf<Code extends WarnCode> = WarnPayloadMap[Code];
+
+  export type WarnDetail = {
+    [Code in WarnCode]: { code: Code; payload: WarnPayloadMap[Code] };
+  }[WarnCode];
+
+  class WarnEvent<
+    Code extends WarnCode = WarnCode,
+  > extends DistributorEvent<WarnDetail> {
+    constructor(code: Code, payload: WarnPayloadOf<Code>);
   }
 
   const Degrade: typeof DegradeEvent;

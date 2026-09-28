@@ -225,7 +225,7 @@ class AbstractTransferrer extends Part.Abstract {
     try {
       await this[_I.DROP]();
     } catch (cause) {
-      this[PART.$I.WARN]('transferrer-drop-failed', cause);
+      this[PART.$I.WARN]('transferrer-drop-failed', { cause });
     }
   }
 

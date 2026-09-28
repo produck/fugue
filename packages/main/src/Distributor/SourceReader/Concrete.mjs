@@ -45,7 +45,7 @@ export default class SourceReader extends Part.Abstract {
 
       return result;
     } catch (cause) {
-      this[PART.$I.WARN]('source-read-failed', cause);
+      this[PART.$I.WARN]('source-read-failed', { cause });
       Ow.throw(cause);
       // c8/V8: the `finally` clause range never counts.
       /* c8 ignore next */
@@ -70,7 +70,7 @@ export default class SourceReader extends Part.Abstract {
     try {
       await this[I.READER].cancel(reason);
     } catch (cause) {
-      this[PART.$I.WARN]('source-cancel-failed', cause);
+      this[PART.$I.WARN]('source-cancel-failed', { cause });
     }
   }
 }

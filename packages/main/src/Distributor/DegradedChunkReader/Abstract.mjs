@@ -39,7 +39,6 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
       await this[_I.INITIALIZE]();
       await this[I.SYNC]();
     } catch (cause) {
-      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
       this[PART.$I.WARN]('initialize-failed', cause);
       Ow.throw(cause);
     }
@@ -58,8 +57,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         count++;
       }
     } catch (cause) {
-      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this[PART.$I.WARN]('seek-failed', cause);
+      this[PART.$I.WARN]('degraded-reader-seek-failed', { cause });
       Ow.throw(cause);
     }
 
@@ -76,7 +74,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       await this[_I.CLOSE]();
     } catch (cause) {
-      this[PART.$I.WARN]('degraded-reader-close-failed', cause);
+      this[PART.$I.WARN]('degraded-reader-close-failed', { cause });
     }
   }
 
@@ -104,8 +102,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       result = await this[_I.READ]();
     } catch (cause) {
-      // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this[PART.$I.WARN]('read-failed', cause);
+      this[PART.$I.WARN]('degraded-reader-read-failed', { cause });
       Ow.throw(cause);
     }
 

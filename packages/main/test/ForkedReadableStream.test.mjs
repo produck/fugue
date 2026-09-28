@@ -166,7 +166,7 @@ describe('ForkedReadableStream', () => {
           warns.map((warn) => warn.code),
           ['source-read-failed'],
         );
-        assert.equal(warns[0].payload, cause);
+        assert.equal(warns[0].payload.cause, cause);
       });
 
       it('should keep the prefix of every copy when the source breaks', async () => {
@@ -205,8 +205,8 @@ describe('ForkedReadableStream', () => {
           warns.map((warn) => warn.code),
           ['source-read-failed', 'source-read-failed'],
         );
-        assert.equal(warns[0].payload, cause);
-        assert.equal(warns[1].payload, cause);
+        assert.equal(warns[0].payload.cause, cause);
+        assert.equal(warns[1].payload.cause, cause);
       });
 
       it('should reject the read when an option getter throws', async () => {
@@ -232,7 +232,7 @@ describe('ForkedReadableStream', () => {
         assert.deepEqual(warns, []);
       });
 
-      it('should dispatch warn(read-failed) when the medium read throws', async () => {
+      it('should dispatch warn(degraded-reader-read-failed) on a failed read', async () => {
         const cause = new Error('the medium failed');
 
         class BreakingReader extends TestDegradedChunkReader {
@@ -264,12 +264,12 @@ describe('ForkedReadableStream', () => {
 
         assert.deepEqual(
           warns.map((warn) => warn.code),
-          ['read-failed'],
+          ['degraded-reader-read-failed'],
         );
-        assert.equal(warns[0].payload, cause);
+        assert.equal(warns[0].payload.cause, cause);
       });
 
-      it('should dispatch warn(seek-failed) when the medium seek throws', async () => {
+      it('should dispatch warn(degraded-reader-seek-failed) on a failed seek', async () => {
         const cause = new Error('the medium seek failed');
 
         class UnseekableReader extends TestDegradedChunkReader {
@@ -294,9 +294,9 @@ describe('ForkedReadableStream', () => {
 
         assert.deepEqual(
           warns.map((warn) => warn.code),
-          ['seek-failed', 'initialize-failed'],
+          ['degraded-reader-seek-failed', 'initialize-failed'],
         );
-        assert.equal(warns[0].payload, cause);
+        assert.equal(warns[0].payload.cause, cause);
       });
 
       it('should dispatch warn(degraded-reader-close-failed) when it refuses', async () => {
@@ -326,7 +326,7 @@ describe('ForkedReadableStream', () => {
           warns.map((warn) => warn.code),
           ['degraded-reader-close-failed'],
         );
-        assert.equal(warns[0].payload, cause);
+        assert.equal(warns[0].payload.cause, cause);
       });
 
       it('should reject with the medium error it hit', async () => {
