@@ -6,6 +6,7 @@ import * as BUFFER_CHUNK_READER from './BufferChunkReader/_Symbol.mjs';
 import * as DEGRADED_CHUNK_READER from './DegradedChunkReader/_Symbol.mjs';
 import * as FORKED_READABLE_STREAM from './ForkedReadableStream/_Symbol.mjs';
 import * as TRANSFERRER from './DegradedChunkReader/Transferrer/_Symbol.mjs';
+import * as PART from './Part/_Symbol.mjs';
 
 export const _A = deepFreeze({
   STASH: CHUNK_STASH,
@@ -22,4 +23,5 @@ export {
   DEGRADED_CHUNK_READER,
   TRANSFERRER,
   FORKED_READABLE_STREAM,
+  PART,
 };

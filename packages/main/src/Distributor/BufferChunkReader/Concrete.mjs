@@ -1,7 +1,7 @@
 import * as ChunkReader from '../ChunkReader/index.mjs';
 
 import { I, $I } from './_Symbol.mjs';
-import { DISTRIBUTOR, _A } from './_External.mjs';
+import { DISTRIBUTOR, PART, _A } from './_External.mjs';
 
 export default class BufferChunkReader extends ChunkReader.Abstract {
   [I.SUCCESSOR] = null;
@@ -17,7 +17,7 @@ export default class BufferChunkReader extends ChunkReader.Abstract {
       return successor[_A.READER.$I.READ]();
     }
 
-    const distributor = this[_A.READER.A.I.DISTRIBUTOR];
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const index = this[_A.READER.A.$I.CONSUMED_COUNT];
     const stash = distributor[DISTRIBUTOR.A.$I.STASH];
     const done = stash.done && index >= stash.length;

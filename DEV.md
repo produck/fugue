@@ -52,26 +52,33 @@
 - **两个表文件分工**：`_Symbol.mjs` 只定义自己的表（纯叶子，不引用任
   何东西）并出别名 `A`；对外的表单独放 `_External.mjs`，在那里导入并
   转发（`export * as CHUNK_READER from '../ChunkReader/_Symbol.mjs'`），
-  并出别名 `_A`。现转发：`ChunkReader` →`DISTRIBUTOR`；
-  `BufferChunkReader` →`CHUNK_READER`+`DISTRIBUTOR`；
-  `ForkedReadableStream` →`DISTRIBUTOR`+`CHUNK_READER`；降级族 →
-  `TRANSFERRER`+`CHUNK_READER`+`DISTRIBUTOR`；写侧 →`CHUNK_STASH`。
+  并出别名 `_A`。现转发：`Part` →`DISTRIBUTOR`；`SourceReader` →`PART`；
+  `ChunkReader` →`DISTRIBUTOR`+`PART`；`BufferChunkReader` →
+  `CHUNK_READER`+`DISTRIBUTOR`+`PART`；`ForkedReadableStream` →
+  `DISTRIBUTOR`+`CHUNK_READER`；降级族 →
+  `TRANSFERRER`+`CHUNK_READER`+`DISTRIBUTOR`+`PART`；写侧 →
+  `CHUNK_STASH`+`PART`。
 - **两个别名各管一摊**：`A`（自己的符号，在 `_Symbol.mjs`）——长键的
   短名（`A.$I.AGENT` / `A.$I.CONSUMED_COUNT` / `A.I.CTOR.READER.CURRENT`…）；
   `_A`（借来的表，在 `_External.mjs`）——`_A.STASH` / `_A.READER` /
   `_A.BUFFER` / `_A.DEGRADED` / `_A.FORKED`。消费侧一眼分出“我的符号”与
   “外面借的”。
+- **`_A` 只收“需要短名”的借表**：它装的是“角色名 → 借来的表”
+  （`_A.READER` = `ChunkReader`）。表名本身够短的（`PART` / `DISTRIBUTOR`）
+  按名从 `_External.mjs` 导入，不机械划进来；判据与 `A` 同：**别名比原名
+  短 × 消费点数量**（`_A.DISTRIBUTOR` 比 `DISTRIBUTOR` 还长，所以不进）。
 - **别名在定义处也套**：键开了就用（`ChunkReader/Abstract.mjs` 自己就写
   `A.$I.CONSUMED_COUNT`）。没开键的长名可以随手开一个，判据是**键名长短 ×
   消费点数量**（短名开别名反而更长，见下条）。
 - **现存键集**（`A`）：`Distributor`——`I.{STASH,AGENT,SOURCE}`、
   `I.CTOR.{TRANSFERRER,READER.{DEGRADED,CURRENT}}`、`$I.REGISTRY`；
-  `ChunkReader`——`I.AGENT`、`$I.{CONSUMED_COUNT,STASH}`；
+  `ChunkReader`——`$I.CONSUMED_COUNT`；
   `DegradedChunkReader`——`I.SEEKED_COUNT`；`Transferrer`——`I.WRITTEN_COUNT`；
   `ForkedReadableStream`——`I.READER`、`$I.READER`。
 - **现存 `_A`**：`Distributor`——`{STASH,READER,BUFFER,DEGRADED,FORKED}`；
   `BufferChunkReader` / `DegradedChunkReader` / `ForkedReadableStream`——
-  `{READER}`；`Transferrer`——`{STASH}`。
+  `{READER}`；`Transferrer`——`{STASH}`；`Part` / `SourceReader` / `ChunkReader`
+  没有 `_A`（借表都按名导入）。
 - **别名只给“直接子表 + 本模块自己的符号”**：家族的内部下级表不设别名，
   按名从 `_External.mjs` 导入即可（写侧 `TRANSFERRER.$I.DUMP`——名字本身
   已经够短，套一层别名只是多一层）。
@@ -79,7 +86,7 @@
   （`const stash = this[A.$I.STASH]`）而不是自行折行；但**实参位置别内联**
   ——把一个 `this[…]` 拼进多参调用里，prettier 会把实参逐行展开，反而
   多占行、也更难读。判据：内联后整行仍 ≤80 列才收（`printWidth`）。
-- 环检查 `logs/check-import-cycles.mjs`：34 个模块，强连通分量 0。
+- 环检查 `logs/check-import-cycles.mjs`：44 个模块，强连通分量 0。
   `_Symbol.mjs` 只定义不引用，“向上借”落在 `_External.mjs` 这条叶子上，
   环自然消失。
 - **宿主面 = 公开成员 + `_I` / `_S`**（后者经包出口的 `SYMBOL` 开出去，
@@ -151,7 +158,7 @@
   归写侧（`START_DUMPING` 成功自己 DROP），内存相的 drop 归 `destroy()`。
 - 降级：**触发在消费代理**（stash 字节超过构造时定下的阈值），**执行在分发器** `$I.DEGRADE`——
   构造写侧实例（按读器家族 `_S.TRANSFERRER_CTOR` + 预置构造参数）、
-  把它挂上分发器（`$I.SET_DISTRIBUTOR`）、执行其 `dump`、
+  把它挂上分发器（元件的 `$I.SET_DISTRIBUTOR`）、执行其 `dump`、
   遍历 registry、选降级 reader 类、换掉各 fork 的读取器
   都留在结构侧。**末尾派 `degrade` 事件**（载荷 `{ byteLength }`：入口处捕获的
   stash 字节数；派发在相位翻转与逐拷贝交接**之后**，所以事件里 `get degraded`
@@ -263,6 +270,25 @@
 - **读侧关闭的边界**：钩子 `_I.CLOSE` 里**不得关介质**——介质是各读器
   共享的，归 `_I.DROP()` 与 transferrer。算作读器自己的资源（比如独立
   日志通道）才在它的职责里；资源语义归宿主。
+
+### Part（元件）
+
+- 定义：分发器下的业务实体——**持分发器引用**（受保护 `$I.DISTRIBUTOR`）、
+  **经 `$I.WARN(code, payload)` 报告**（转发到分发器那一个出口）。成员四个：
+  `SourceReader` · `SourceConsumptionAgent` · `ChunkReader.Abstract`
+  （内存相与降级读器都在内） · `AbstractTransferrer`。
+- 判据是“属于分发器”（引用那一半），报告是基类给的能力：内存相读器继承
+  了引用、今天不报告，也不算不是元件。这个收编是继承链逼出来的——降级
+  读器 `extends ChunkReader.Abstract`，基类只能挂在 `ChunkReader.Abstract` 上。
+- 挂接点两个：构造器收分发器；或构造后用 `$I.SET_DISTRIBUTOR` 挂上
+  （写侧的构造器收的是宿主参数，塞不进分发器）。写侧因此显式声明无参
+  构造器，免得宿主的参数被转发进这个槽——构造完分发器立即挂上去。
+- 不在这里：`ChunkStash`（不持引用、不报告）· `ForkedReadableStream`
+  （只用构造器闭包拿注册表与选项）· `ForkedReadableStreamRegistry` ·
+  `Options`（读时才把分发器当参数传）。
+- `Part.Abstract` 直接构造抛错（`Abstract()` 的抽象构造保护，与家族基类
+  同）；`$I.WARN` 是真出口的转发，`EXCEPTIONS.md` 的「出口唯一」说的仍
+  是分发器那一个。
 
 ### Options（配置面）
 
@@ -391,8 +417,8 @@
   对“源还能不能拉”这一个问题，对外只给一个读口：`finished`
   （`done || cancelled`）——消费代理的 `ensure()` 只认它。**源错不进
   `finished`**：进去就是陷阱第一条（循环提前停），出路只能是那个拒绝。
-- **构造收 `(distributor, stream)`，只多存一个分发器引用**（2026-09-26）：
-  用途就是报告——`[I.READ]()` 里平台 `read()` 拒 → 派
+- **构造收 `(distributor, stream)`，引用由元件基类持有**（2026-09-28 起归
+  `Part`）：用途就是报告——`[I.READ]()` 里平台 `read()` 拒 → 派
   `warn('source-read-failed', cause)` 再原样抛出（数据面 fail-fast）；
   `cancel()` 里平台 `cancel()` 拒 → 派 `warn('source-cancel-failed', cause)`
   **只报不抛**（收摊面 fail-soft，2026-09-27 改）。两处都**不打闩**：
@@ -446,9 +472,10 @@
 
 - 分叉：内存路径 `BufferChunkReader`（直接读共享 `ChunkStash`）与降级
   家族（`AbstractDegradedChunkReader` + 具体介质侧实现）。
-- **读器只持一个保护级分发器成员**：`agent` / `stash` / 介质实例都按需从
-  它解构（`ENSURE_THEN_READ` 解出 `agent`，`chunkStash` / `transferrer` 是
-  从它取的 getter）。读器因此
+- **读器只持一个保护级分发器成员**：引用归元件基类
+  （`Part.$I.DISTRIBUTOR`），`agent` / `stash` / 介质实例都按需从它解构
+  （`ENSURE_THEN_READ` 解出 `agent`，`chunkStash` / `transferrer` 是从它
+  取的 getter）。读器因此
   **手里有分发器**，宿主模板成员在发生处就能派事件（见「异常面」），
   不必再借上一层代报。
 
@@ -715,7 +742,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   还结算门："该位永不会有块"正是由它冻结的终值算出来的。
 - **配对**：写侧**类**由降级读器家族声明（`_S.TRANSFERRER_CTOR`，
   基类静态抽象）；分发器在降级时构造实例、立刻把**自己**挂上去
-  （`$I.SET_DISTRIBUTOR`，三个宿主成员的就地报告靠它）、再持有
+  （元件的 `$I.SET_DISTRIBUTOR`，三个宿主成员的就地报告靠它）、再持有
   （`$I.TRANSFERRER`）、
   再交接给各拷贝的新读取器。实例与 `ChunkStash` 1:1，因此不需要
   一次性守卫与 `instanceof` 校验。转存产物可留在实例自己的字段里。
@@ -761,8 +788,7 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
 
 ### ForkedReadableStreamRegistry（fork 注册表）
 
-- 内部协作类，与 `SourceConsumptionAgent` 同路：平铺字段、普通方法名，
-  不带符号表；由分发器构造并持有在受保护字段
+- 内部协作类：平铺字段、普通方法名，不带符号表；由分发器构造并持有在受保护字段
   `$I.FORKED_READABLE_STREAM_REGISTRY`（fork 出口自清理要读它，故不能私有）。
 - `forks`：`Map<ForkedReadableStream, ReadableStreamDefaultController>`
   ——宿主对每个拷贝的账：成员 + 结束它所需的那根操作杆。
@@ -823,8 +849,8 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
   经分发器的受保护成员 `$I.WARN(code, payload)` 派发——出口一处，
   报告点仍各自在失败的发生处。
 - **介质侧同样在发生处**（2026-09-26 收口，代派没有了）：转移器**构造后**
-  被分发器挂上自己（`$I.SET_DISTRIBUTOR`——构造器收的是宿主参数，塞不进
-  分发器），于是三个宿主模板成员各自就地上报：
+  被分发器挂上自己（元件的 `$I.SET_DISTRIBUTOR`——构造器收的是宿主参数，
+  塞不进分发器），于是三个宿主模板成员各自就地上报：
   `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；包装错随后
   照旧抛给调用链）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在
   后续每趟 pull 里由 `$I.WRITE` 同步抛）· `_I.DROP` → `drop-failed`

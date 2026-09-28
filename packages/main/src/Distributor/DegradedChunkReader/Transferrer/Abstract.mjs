@@ -2,11 +2,16 @@ import * as Ow from '@produck/ow';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
-import { DISTRIBUTOR, _A } from './_External.mjs';
+import { PART, _A } from './_External.mjs';
+import * as Part from '../../Part/index.mjs';
 
-class AbstractTransferrer {
+class AbstractTransferrer extends Part.Abstract {
   static [_S.PARSE_ARGUMENTS](args) {
     return args;
+  }
+
+  constructor() {
+    super();
   }
 
   [A.I.WRITTEN_COUNT] = 0;
@@ -18,7 +23,6 @@ class AbstractTransferrer {
   [I.ERROR] = null;
   [I.DONE] = false;
   [I.DROPPED] = false;
-  [I.DISTRIBUTOR] = null;
 
   [I.SETTLE]() {
     const waitingPositions = this[I.WAITING_POSITION_TABLE];
@@ -54,10 +58,7 @@ class AbstractTransferrer {
     } catch (cause) {
       this[I.FAIL](cause);
       // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN](
-        'transferrer-dump-failed',
-        cause,
-      );
+      this[PART.$I.WARN]('transferrer-dump-failed', cause);
       Ow.Error.Common('Failed to dump the ChunkStash.', { cause });
     }
 
@@ -67,10 +68,6 @@ class AbstractTransferrer {
     this[I.PENDING_CHUNKS].splice(0, length);
     this[A.I.WRITTEN_COUNT] = length;
     this[I.SETTLE]();
-  }
-
-  [$I.SET_DISTRIBUTOR](distributor) {
-    this[I.DISTRIBUTOR] = distributor;
   }
 
   [$I.DUMP](stash) {
@@ -94,10 +91,7 @@ class AbstractTransferrer {
         } catch (cause) {
           this[I.FAIL](cause);
           // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-          this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN](
-            'transferrer-write-failed',
-            cause,
-          );
+          this[PART.$I.WARN]('transferrer-write-failed', cause);
           break;
         }
 
@@ -154,7 +148,7 @@ class AbstractTransferrer {
     try {
       await this[_I.DROP]();
     } catch (cause) {
-      this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('drop-failed', cause);
+      this[PART.$I.WARN]('drop-failed', cause);
     }
   }
 

@@ -1,14 +1,11 @@
 import { $I, A } from './_Symbol.mjs';
-import { _A, TRANSFERRER } from './_External.mjs';
+import { _A, PART, TRANSFERRER } from './_External.mjs';
+import * as Part from './Part/index.mjs';
 import * as Options from './Options/index.mjs';
 
-export default class SourceConsumptionAgent {
+export default class SourceConsumptionAgent extends Part.Abstract {
   pulling = null;
   pulledChunkCount = 0;
-
-  constructor(distributor) {
-    this.distributor = distributor;
-  }
 
   get pullingSettled() {
     return Promise.allSettled([this.pulling]);
@@ -24,7 +21,7 @@ export default class SourceConsumptionAgent {
 
   // Ensure the chunk is ready before downstream actually consumes it.
   async ensure(target) {
-    const { distributor } = this;
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const source = distributor[A.I.SOURCE];
 
     while (target >= this.pulledChunkCount && !source.finished) {
@@ -46,9 +43,10 @@ export default class SourceConsumptionAgent {
   }
 
   async pull() {
-    const { value, done } = await this.distributor[A.I.SOURCE].read();
+    const distributor = this[PART.$I.DISTRIBUTOR];
+    const { value, done } = await distributor[A.I.SOURCE].read();
 
-    if (this.distributor.degraded) {
+    if (distributor.degraded) {
       this.toTransferrer(value, done);
     } else {
       this.toStash(value, done);
@@ -61,7 +59,7 @@ export default class SourceConsumptionAgent {
   }
 
   degradeIfNeeded() {
-    const { distributor } = this;
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const stash = distributor[A.$I.STASH];
 
     if (stash.byteLength <= Options.Get.MaxStashByteLength(distributor)) {
@@ -76,7 +74,7 @@ export default class SourceConsumptionAgent {
   }
 
   toStash(chunk, done) {
-    const { distributor } = this;
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const stash = distributor[A.$I.STASH];
 
     if (done) {
@@ -87,7 +85,7 @@ export default class SourceConsumptionAgent {
   }
 
   toTransferrer(chunk, done) {
-    const transferrer = this.distributor[$I.TRANSFERRER];
+    const transferrer = this[PART.$I.DISTRIBUTOR][$I.TRANSFERRER];
 
     if (done) {
       return void transferrer[TRANSFERRER.$I.SET_DONE]();
@@ -98,12 +96,12 @@ export default class SourceConsumptionAgent {
   }
 
   observeBacklog() {
-    const { distributor } = this;
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const transferrer = distributor[$I.TRANSFERRER];
     const warningLength = Options.Get.MaxBacklogWarningByteLength(distributor);
 
     if (transferrer.pendingByteLength > warningLength) {
-      distributor[$I.WARN]('backlog', {
+      this[PART.$I.WARN]('backlog', {
         byteLength: transferrer.pendingByteLength,
       });
     }

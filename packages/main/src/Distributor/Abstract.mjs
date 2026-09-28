@@ -13,7 +13,7 @@ import * as Checker from './Checker.mjs';
 import * as Event from './Event.mjs';
 import * as Options from './Options/index.mjs';
 import { I, $I, _S, A } from './_Symbol.mjs';
-import { _A, TRANSFERRER } from './_External.mjs';
+import { _A, PART, TRANSFERRER } from './_External.mjs';
 
 const noop = () => {};
 
@@ -91,7 +91,7 @@ class ReadableStreamDistributor extends EventTarget {
     const { byteLength } = stash;
     const transferrer = new TransferrerImpl(...this[I.TRANSFERRER_ARGS]);
 
-    transferrer[TRANSFERRER.$I.SET_DISTRIBUTOR](this);
+    transferrer[PART.$I.SET_DISTRIBUTOR](this);
 
     if (stash.done) {
       transferrer[TRANSFERRER.$I.SET_DONE]();

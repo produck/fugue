@@ -10,7 +10,6 @@ const I_DRAIN = Symbol('.#drain()');
 const I_ERROR = Symbol('.#error');
 const I_DONE = Symbol('.#done');
 const I_DROPPED = Symbol('.#dropped');
-const I_DISTRIBUTOR = Symbol('.#distributor');
 const I_START_DUMPING = Symbol('.#startDumping()');
 const I_SETTLE = Symbol('.#settle()');
 const I_FAIL = Symbol('.#fail()');
@@ -26,7 +25,6 @@ export const I = deepFreeze({
   ERROR: I_ERROR,
   DONE: I_DONE,
   DROPPED: I_DROPPED,
-  DISTRIBUTOR: I_DISTRIBUTOR,
   START_DUMPING: I_START_DUMPING,
   SETTLE: I_SETTLE,
   FAIL: I_FAIL,
@@ -38,7 +36,6 @@ const $I_SET_DONE = Symbol('.$setDone()');
 const $I_WAIT_POSITION = Symbol('.$waitPosition()');
 const $I_PEEK = Symbol('.$peek()');
 const $I_DROP = Symbol('.$drop()');
-const $I_SET_DISTRIBUTOR = Symbol('.$setDistributor()');
 
 export const $I = deepFreeze({
   DUMP: $I_DUMP,
@@ -47,7 +44,6 @@ export const $I = deepFreeze({
   WAIT_POSITION: $I_WAIT_POSITION,
   PEEK: $I_PEEK,
   DROP: $I_DROP,
-  SET_DISTRIBUTOR: $I_SET_DISTRIBUTOR,
 });
 
 const _I_DUMP = Symbol('._dump()');

@@ -1,11 +1,5 @@
 import { deepFreeze } from '@produck/deep-freeze-enumerable';
 
-const I_DISTRIBUTOR = Symbol('.#distributor');
-
-export const I = deepFreeze({
-  DISTRIBUTOR: I_DISTRIBUTOR,
-});
-
 const $I_CONSUMED_CHUNK_COUNT = Symbol('.$consumedChunkCount');
 const $I_READ = Symbol('.$read()');
 const $I_ENSURE_THEN_READ = Symbol('.$ensureThenRead()');
@@ -25,9 +19,6 @@ export const _I = deepFreeze({
 });
 
 export const A = deepFreeze({
-  I: {
-    DISTRIBUTOR: I_DISTRIBUTOR,
-  },
   $I: {
     CONSUMED_COUNT: $I_CONSUMED_CHUNK_COUNT,
   },

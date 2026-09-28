@@ -1,19 +1,21 @@
 import * as Ow from '@produck/ow';
 
-import { DISTRIBUTOR } from './_External.mjs';
 import { I } from './_Symbol.mjs';
+import { PART } from './_External.mjs';
+import * as Part from '../Part/index.mjs';
 
-export default class SourceReader {
+export default class SourceReader extends Part.Abstract {
   [I.DONE] = false;
   [I.CANCELLED] = false;
   [I.READING] = null;
 
   constructor(distributor, stream) {
+    super(distributor);
+
     if (stream.locked) {
       Ow.Error.Common('Source stream must not be locked');
     }
 
-    this[I.DISTRIBUTOR] = distributor;
     this[I.STREAM] = stream;
     this[I.READER] = stream.getReader();
   }
@@ -43,7 +45,7 @@ export default class SourceReader {
 
       return result;
     } catch (cause) {
-      this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('source-read-failed', cause);
+      this[PART.$I.WARN]('source-read-failed', cause);
       Ow.throw(cause);
       // c8/V8: the `finally` clause range never counts.
       /* c8 ignore next */
@@ -63,14 +65,12 @@ export default class SourceReader {
   async cancel(reason) {
     // Guarantee: `$I.DESTROY` is the only caller, and it is cached by
     //   `$I.DESTROYED`, so a cancel never arrives twice.
-    const distributor = this[I.DISTRIBUTOR];
-
     this[I.CANCELLED] = true;
 
     try {
       await this[I.READER].cancel(reason);
     } catch (cause) {
-      distributor[DISTRIBUTOR.$I.WARN]('source-cancel-failed', cause);
+      this[PART.$I.WARN]('source-cancel-failed', cause);
     }
   }
 }
