@@ -138,13 +138,13 @@ export declare namespace Event {
     | { code: 'backlog'; payload: { byteLength: number } }
     | { code: 'close-failed'; payload: unknown }
     | { code: 'drop-failed'; payload: unknown }
-    | { code: 'dump-failed'; payload: unknown }
+    | { code: 'transferrer-dump-failed'; payload: unknown }
     | { code: 'initialize-failed'; payload: unknown }
     | { code: 'read-failed'; payload: unknown }
     | { code: 'seek-failed'; payload: unknown }
     | { code: 'source-cancel-failed'; payload: unknown }
     | { code: 'source-read-failed'; payload: unknown }
-    | { code: 'write-failed'; payload: unknown };
+    | { code: 'transferrer-write-failed'; payload: unknown };
 
   type WarnCode = WarnDetail['code'];
 

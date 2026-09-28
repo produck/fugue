@@ -438,7 +438,7 @@ graph BT
     `_I.DUMP` 开工，成功即 `DROP` 载体、清掉接管的这 L 条（已落盘）并把
     水位一次推满；失败只闩 `I.ERROR` 并结算门（保留现场不 DROP；接管的
     这批仍在队列里，各拷贝按自己位置读到底，只有永不会有块的位被拒），
-    返回的 Promise 以转义错误拒（`dump-failed` 已在发生处派出）。
+    返回的 Promise 以转义错误拒（`transferrer-dump-failed` 已在发生处派出）。
   - `$I.WRITE(buffer)` — 活数据**入队即返回**（不碰介质）：追加待写
     队列并确保 drain 在途；队列无上限，积压处置归下游。
   - `$I.SET_DONE()` — 源已尽在降级相位的落点：agent 在 done 那趟拉取
@@ -723,9 +723,10 @@ sequenceDiagram
 
 源流正常结束（源出错已有 `warn('source-read-failed')` 兜着）、全部 fork
 离开等更细粒度事件尚未实现，属规划。`warn` 的
-code 现在有十个：`backlog` / `close-failed` / `drop-failed` / `dump-failed` /
+code 现在有十个：`backlog` / `close-failed` / `drop-failed` /
 `initialize-failed` / `read-failed` / `seek-failed` / `source-cancel-failed` /
-`source-read-failed` / `write-failed`（载荷随 code；
+`source-read-failed` / `transferrer-dump-failed` /
+`transferrer-write-failed`（载荷随 code；
 框架不装默认处理器，宿主自己接）。
 `destroy()`（强档）不另派事件：它是
 宿主动作，调用方本来就知道——收摊何时完成看它返回的那个 Promise。

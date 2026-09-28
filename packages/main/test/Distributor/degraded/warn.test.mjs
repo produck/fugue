@@ -14,7 +14,7 @@ import {
 const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
 const { _I: READER } = SYMBOL.DEGRADED_CHUNK_READER;
 
-it('should dispatch warn(dump-failed) when the dump fails', async () => {
+it('should dispatch warn(transferrer-dump-failed) when the dump fails', async () => {
   const refused = new Error('the medium refuses the dump');
 
   class RefusingTransferrer extends TestTransferrer {
@@ -37,14 +37,14 @@ it('should dispatch warn(dump-failed) when the dump fails', async () => {
 
   assert.deepEqual(
     warns.map((warn) => warn.code),
-    ['dump-failed', 'initialize-failed'],
+    ['transferrer-dump-failed', 'initialize-failed'],
   );
   assert.equal(warns[0].payload, refused);
   assert.match(warns[1].payload.message, /Failed to dump the ChunkStash/);
   assert.equal(warns[1].payload.cause, refused);
 });
 
-it('should dispatch warn(write-failed) when the write fails', async () => {
+it('should dispatch warn(transferrer-write-failed) when the write fails', async () => {
   const refused = new Error('the medium refuses the write');
 
   class RefusingWriteTransferrer extends TestTransferrer {
@@ -69,7 +69,7 @@ it('should dispatch warn(write-failed) when the write fails', async () => {
   await settle();
 
   assert.equal(warns.length, 1);
-  assert.equal(warns[0].code, 'write-failed');
+  assert.equal(warns[0].code, 'transferrer-write-failed');
   assert.equal(warns[0].payload, refused);
 });
 

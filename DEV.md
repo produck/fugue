@@ -825,9 +825,9 @@ own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永�
 - **介质侧同样在发生处**（2026-09-26 收口，代派没有了）：转移器**构造后**
   被分发器挂上自己（`$I.SET_DISTRIBUTOR`——构造器收的是宿主参数，塞不进
   分发器），于是三个宿主模板成员各自就地上报：
-  `_I.DUMP` → `dump-failed`（载荷是**宿主原始因**；包装错随后照旧抛给
-  调用链）· `_I.WRITE` → `write-failed`（闩住后仍会在后续每趟 pull 里由
-  `$I.WRITE` 同步抛）· `_I.DROP` → `drop-failed`
+  `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；包装错随后
+  照旧抛给调用链）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在
+  后续每趟 pull 里由 `$I.WRITE` 同步抛）· `_I.DROP` → `drop-failed`
   后只报不抛（收摊面 fail-soft）。
 - **重复上报不去抖**：与 `backlog` 同族——一个因（dump 被拒）可以让每个
   降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。

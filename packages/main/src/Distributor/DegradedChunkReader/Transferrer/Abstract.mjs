@@ -54,7 +54,10 @@ class AbstractTransferrer {
     } catch (cause) {
       this[I.FAIL](cause);
       // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-      this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('dump-failed', cause);
+      this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN](
+        'transferrer-dump-failed',
+        cause,
+      );
       Ow.Error.Common('Failed to dump the ChunkStash.', { cause });
     }
 
@@ -91,7 +94,10 @@ class AbstractTransferrer {
         } catch (cause) {
           this[I.FAIL](cause);
           // TODO: settle the post-processing of this point (EXCEPTIONS.md).
-          this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN]('write-failed', cause);
+          this[I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN](
+            'transferrer-write-failed',
+            cause,
+          );
           break;
         }
 

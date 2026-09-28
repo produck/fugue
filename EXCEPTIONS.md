@@ -103,18 +103,20 @@ refused to open`。
   - 后处理：TODO（待逐条讨论）。
   - 相关测试：`ForkedReadableStream.test.mjs` ›
     `should dispatch warn(read-failed) when the medium read throws`。
-- **\[L3\]** · **`dump-failed`**（宿主 `_I.DUMP` 拒，载荷是宿主原始因）
-  - 观测：`dump-failed`。
+- **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒，载荷是
+  宿主原始因）
+  - 观测：`transferrer-dump-failed`。
   - 失败域：写侧实例（闩错，不可逆）。
   - 后处理：TODO（待逐条讨论）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(dump-failed) when the dump fails`。
-- **\[L3\]** · **`write-failed`**（宿主 `_I.WRITE` 拒，每个写侧实例首次一条）
-  - 观测：`write-failed`。
+    `should dispatch warn(transferrer-dump-failed) when the dump fails`。
+- **\[L3\]** · **`transferrer-write-failed`**（宿主 `_I.WRITE` 拒，每个写侧
+  实例首次一条）
+  - 观测：`transferrer-write-failed`。
   - 失败域：写侧实例（闩错，不可逆）。
   - 后处理：TODO（待逐条讨论）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(write-failed) when the write fails`。
+    `should dispatch warn(transferrer-write-failed) when the write fails`。
 - **\[L4\]** · **`source-read-failed`**（源 `read()` 拒，源基础设施坏）
   - 观测：`source-read-failed`，每次一条。
   - 失败域：分发器。
@@ -165,11 +167,13 @@ refused to open`。
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
 - **10 个 code**：`backlog` / `close-failed` / `drop-failed` /
-  `dump-failed` / `initialize-failed` / `read-failed` / `seek-failed` /
-  `source-cancel-failed` / `source-read-failed` / `write-failed`。
-- **命名约定**：**源流自身发生的失败一律带 `source-` 前缀**——现在只有两个，
-  报告点都在源读取器里：`source-read-failed`、`source-cancel-failed`。
-  读侧 / 写侧的失败按发生处命名。
+  `initialize-failed` / `read-failed` / `seek-failed` / `source-cancel-failed` /
+  `source-read-failed` / `transferrer-dump-failed` /
+  `transferrer-write-failed`。
+- **命名约定**：**发生处前缀**——源读取器自己发生的失败带 `source-`
+  （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的失败
+  带 `transferrer-`（现在两个：`transferrer-dump-failed`、
+  `transferrer-write-failed`）。其余按发生处命名。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 
@@ -179,6 +183,6 @@ refused to open`。
   全部分发器一起死的路只有两条，都是宿主动作。
 - 不聚合、不去抖、不发"恢复"事件：那会把 `warn` 变成宿主必须实现的状态机。
 - 不翻译宿主异常：唯一一处包装是 dump 失败给调用链的框架错
-  （`Failed to dump the ChunkStash.`），而 `dump-failed` 的载荷仍是**宿主
-  原始因**。
+  （`Failed to dump the ChunkStash.`），而 `transferrer-dump-failed` 的
+  载荷仍是**宿主原始因**。
 - 不做失败计数与熔断阈值：没有这样的配置项，也不打算有。
