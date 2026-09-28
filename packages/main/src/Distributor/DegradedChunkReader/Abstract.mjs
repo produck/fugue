@@ -76,7 +76,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       await this[_I.CLOSE]();
     } catch (cause) {
-      this[PART.$I.WARN]('close-failed', cause);
+      this[PART.$I.WARN]('degraded-reader-close-failed', cause);
     }
   }
 

@@ -10,9 +10,11 @@ import {
   settle,
   TestDegradedChunkReader,
   TestDistributor,
+  TestTransferrer,
 } from '#test/baseline.mjs';
 
 const { _I: READER } = SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
 
 describe('ForkedReadableStream', () => {
   it('should be a ReadableStream', () => {
@@ -23,6 +25,48 @@ describe('ForkedReadableStream', () => {
 
   describe('.getReader()', () => {
     describe('>reader', () => {
+      it('should keep the prefix, then reject with the cause of a failed dump', async () => {
+        const cause = new Error('the medium failed');
+
+        class FailingTransferrer extends TestTransferrer {
+          async [TRANSFERRER.DUMP]() {
+            throw cause;
+          }
+        }
+
+        const family = makeFamily({ medium: FailingTransferrer });
+        const distributor = new family.Distributor(makeSource(['a']));
+        const reader = distributor.fork().getReader();
+
+        Options.Tune.MaxStashByteLength(distributor, 0);
+        Options.Asset.noRetry(distributor);
+
+        assert.equal((await reader.read()).value.toString(), 'a');
+        await assert.rejects(reader.read(), cause);
+      });
+
+      it('should drain the queue, then reject with the cause of a failed write', async () => {
+        const cause = new Error('the medium failed');
+
+        class FailingTransferrer extends TestTransferrer {
+          async [TRANSFERRER.WRITE]() {
+            throw cause;
+          }
+        }
+
+        const family = makeFamily({ medium: FailingTransferrer });
+        const distributor = new family.Distributor(makeSource(['a', 'b']));
+        const reader = distributor.fork().getReader();
+
+        Options.Tune.MaxStashByteLength(distributor, 0);
+        Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+        Options.Asset.noRetry(distributor);
+
+        assert.equal((await reader.read()).value.toString(), 'a');
+        assert.equal((await reader.read()).value.toString(), 'b');
+        await assert.rejects(reader.read(), cause);
+      });
+
       it('should yield every chunk of the source once, in order', async () => {
         const distributor = new TestDistributor(makeSource(['a', 'b', 'c']));
 
@@ -255,7 +299,7 @@ describe('ForkedReadableStream', () => {
         assert.equal(warns[0].payload, cause);
       });
 
-      it('should dispatch warn(close-failed) when the medium refuses to close', async () => {
+      it('should dispatch warn(degraded-reader-close-failed) when it refuses', async () => {
         const cause = new Error('the medium refuses to close');
 
         class RefusingCloseReader extends TestDegradedChunkReader {
@@ -280,7 +324,7 @@ describe('ForkedReadableStream', () => {
 
         assert.deepEqual(
           warns.map((warn) => warn.code),
-          ['close-failed'],
+          ['degraded-reader-close-failed'],
         );
         assert.equal(warns[0].payload, cause);
       });

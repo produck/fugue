@@ -50,7 +50,7 @@ describe('Event', () => {
 
   describe('::Warn', () => {
     it('should be a CustomEvent of type warn', () => {
-      const event = new Event.Warn('backlog', 4096);
+      const event = new Event.Warn('transferrer-backlog', 4096);
 
       assert.ok(event instanceof CustomEvent);
       assert.equal(event.type, 'warn');
@@ -59,9 +59,12 @@ describe('Event', () => {
     describe('>detail', () => {
       it('should carry the code and its payload', () => {
         const payload = { byteLength: 4096 };
-        const event = new Event.Warn('backlog', payload);
+        const event = new Event.Warn('transferrer-backlog', payload);
 
-        assert.deepEqual(event.detail, { code: 'backlog', payload });
+        assert.deepEqual(event.detail, {
+          code: 'transferrer-backlog',
+          payload,
+        });
       });
     });
   });

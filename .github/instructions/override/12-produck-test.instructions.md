@@ -11,8 +11,8 @@ Deltas against `.github/instructions/produck/12-produck-test.instructions.md`.
 - Do not open a separate `#` suite for events. An event case lives in the suite
   of the member that triggers it; when several members trigger the same event,
   define one case per trigger. For example:
-  - `degrade`, `warn(transferrer-dump-failed)` and `warn(backlog)` belong to
-    `.degraded()`;
+  - `degrade`, `warn(transferrer-dump-failed)` and
+    `warn(transferrer-backlog)` belong to `.degraded()`;
   - `warn(source-cancel-failed)` belongs to `.destroy() > >promise`;
   - `terminate` belongs to `.terminate()`; `fork` belongs to `.fork()`.
 - Suites are derived from public members and exports only. Abstract members

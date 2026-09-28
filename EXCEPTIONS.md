@@ -29,8 +29,9 @@
 - **数据面 fail-fast**：宿主模板成员的失败 ⇒ 报告 + 原样抛出 ⇒ 该拷贝的
   读被拒。落在这里的异常意味着"这一笔不可完成"，不会被悄悄跳过。
 - **收摊面 fail-soft**：`_I.CLOSE` / `_I.DROP` / 源 `cancel` 的失败
-  **只报告、不再抛出**（`close-failed` / `drop-failed` /
-  `source-cancel-failed`）。收摊的职责是把摊子收干净，不是继续交付；
+  **只报告、不再抛出**（`degraded-reader-close-failed` /
+  `transferrer-drop-failed` / `source-cancel-failed`）。收摊的职责是把摊子
+  收干净，不是继续交付；
   让一个坏介质把 `destroy()` 卡住或拒掉是纯损失。
 
 ## 三、逐个异常点：等级 · 发生处 · 观测 · 失败域 · 后处理 · 相关测试
@@ -41,7 +42,7 @@
 
 - **\[L1\] 可忽略级**：抓到了该异常，但只提供观测——不影响分发器层状态，
   也不影响业务进度。**不靠 `try` 块的也算**：由“慢”带来的危险状态
-  （`backlog`：积压超阈值）同样落这一级。
+  （`transferrer-backlog`：积压超阈值）同样落这一级。
 - **\[L2\] 局部级**：一个拷贝（或它自己的读器）出局，其他拷贝与分发器照旧。
 - **\[L3\] 闩错级**：共享的写侧实例闩错、不可逆；此后只剩已经捕获的前缀。
 - **\[L4\] 分发器级**：全部拷贝一起——源坏之后，要新数据的读都拒。
@@ -57,29 +58,29 @@
   - 后处理：无（只观测；源侧清理有没有跑完归宿主自己记账）。
   - 相关测试：`Distributor/destroy/promise.test.mjs` ›
     `should dispatch warn(source-cancel-failed) when it refuses`。
-- **\[L1\]** · **`drop-failed`**（宿主 `_I.DROP` 拒）
-  - 观测：`drop-failed`。
+- **\[L1\]** · **`transferrer-drop-failed`**（宿主 `_I.DROP` 拒）
+  - 观测：`transferrer-drop-failed`。
   - 失败域：无。
   - 后处理：无（只观测；介质句柄是否真放开归宿主自己兜）。
   - 相关测试：`Distributor/destroy/promise.test.mjs` ›
-    `should dispatch warn(drop-failed) when the release fails`；
+    `should dispatch warn(transferrer-drop-failed) when the release fails`；
     `Transferrer.test.mjs` ›
     `should swallow a failure of the release`、
     `should swallow a synchronous failure of the release`。
-- **\[L1\]** · **`close-failed`**（宿主 `_I.CLOSE` 拒）
-  - 观测：`close-failed`。
+- **\[L1\]** · **`degraded-reader-close-failed`**（宿主 `_I.CLOSE` 拒）
+  - 观测：`degraded-reader-close-failed`。
   - 失败域：无。
   - 后处理：无（只观测；读器 / 介质句柄是否真关好归宿主自己兜）。
   - 相关测试：`Distributor/destroy/promise.test.mjs` ›
-    `should dispatch warn(close-failed) when the medium refuses to close`；
+    `should dispatch warn(degraded-reader-close-failed) when it refuses`；
     `ForkedReadableStream.test.mjs` ›
-    `should dispatch warn(close-failed) when the medium refuses to close`。
-- **\[L1\]** · **`backlog`**（积压超阈值——“慢”带来的危险状态）
-  - 观测：`backlog`，超阈值后每写一笔一条（不去抖）。
+    `should dispatch warn(degraded-reader-close-failed) when it refuses`。
+- **\[L1\]** · **`transferrer-backlog`**（积压超阈值——“慢”带来的危险状态）
+  - 观测：`transferrer-backlog`，超阈值后每写一笔一条（不去抖）。
   - 失败域：无（不改状态、不挡读、不反压源）。
   - 后处理：无（只观测；内存代价归宿主——限频 / 扩容 / 重建都是宿主的决定）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(backlog) once the backlog is over the limit`。
+    `should dispatch warn(transferrer-backlog) once over the limit`。
 - **\[L2\]** · **`initialize-failed`**（宿主 `_I.INITIALIZE` 拒）
   - 观测：`initialize-failed`，每个降级读器一条。
   - 失败域：该读器，永久。
@@ -103,20 +104,37 @@ refused to open`。
   - 后处理：TODO（待逐条讨论）。
   - 相关测试：`ForkedReadableStream.test.mjs` ›
     `should dispatch warn(read-failed) when the medium read throws`。
-- **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒，载荷是
-  宿主原始因）
-  - 观测：`transferrer-dump-failed`。
-  - 失败域：写侧实例（闩错，不可逆）。
-  - 后处理：TODO（待逐条讨论）。
+- **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒；可重试，
+  用尽才闩）
+  - 观测：每次尝试一条，载荷 `{ cause, retry }`（`retry` 从 0 起，每条
+    事件是独立快照）。
+  - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
+  - 后处理：按 `DumpRetryInterval` 重试到 `MaxDumpRetryCount`；期间不闩
+    错、`dumping` 保持 pending、队列里的块照发（吸收）；用尽则闩
+    `I.DUMPING_ERROR` 并结算门——未被接受的位当场拒；`destroy()` 落下时
+    立即收手（既不闩也不记账）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(transferrer-dump-failed) when the dump fails`。
-- **\[L3\]** · **`transferrer-write-failed`**（宿主 `_I.WRITE` 拒，每个写侧
-  实例首次一条）
-  - 观测：`transferrer-write-failed`。
-  - 失败域：写侧实例（闩错，不可逆）。
-  - 后处理：TODO（待逐条讨论）。
+    `should dispatch warn(transferrer-dump-failed) when the dump fails`、
+    `should dispatch warn(transferrer-dump-failed) once per attempt`；
+    `Transferrer.test.mjs` › `should retry the dump until the option runs out`、
+    `should land the dump when the medium answers the retry`、
+    `should stop retrying once the transferrer is released`、
+    `should keep the chunks a failed dump left undrained`。
+- **\[L3\]** · **`transferrer-write-failed`**（宿主 `_I.WRITE` 拒；可重试，
+  用尽才闩）
+  - 观测：每次尝试一条，载荷 `{ cause, retry }`（`retry` 从 0 起，每条
+    事件是独立快照）。
+  - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
+  - 后处理：每块由 `I.DRAIN_HEAD` 按 `DrainRetryInterval` 重试到
+    `MaxDrainRetryCount`（**重试归每块，逆历归 `I.DRAIN`**）；期间不闩错、
+    队列里的块照发（吸收）；用尽则闩 `I.DRAINING_ERROR` 并结算门——未被
+    接受的位当场拒；`destroy()` 落下时立即收手（既不闩也不记账）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(transferrer-write-failed) when the write fails`。
+    `should dispatch warn(transferrer-write-failed) when the write fails`；
+    `Transferrer.test.mjs` ›
+    `should retry the write when the medium answers the second time`、
+    `should give up the drain once the retry option runs out`、
+    `should stop draining once the transferrer is released`。
 - **\[L4\]** · **`source-read-failed`**（源 `read()` 拒，源基础设施坏）
   - 观测：`source-read-failed`，每次一条。
   - 失败域：分发器。
@@ -165,17 +183,21 @@ refused to open`。
   派发（元件那份 `$I.WARN` 只是转发，真出口仍是分发器那一个）；每个 code
   只有**一个**报告点，且都落在**发生处**（没有代派）。
 - **不去抖、不聚合、不发回落事件**：同一个因可以出多条（每次尝试一条），
-  这些是水准信号，限频与计数归宿主。`backlog` 是唯一的“带量”信号
+  这些是水准信号，限频与计数归宿主。`transferrer-backlog` 是唯一的“带量”信号
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
-- **10 个 code**：`backlog` / `close-failed` / `drop-failed` /
-  `initialize-failed` / `read-failed` / `seek-failed` / `source-cancel-failed` /
-  `source-read-failed` / `transferrer-dump-failed` /
-  `transferrer-write-failed`。
+- **10 个 code**：`degraded-reader-close-failed` /
+  `initialize-failed` / `read-failed` / `seek-failed` /
+  `source-cancel-failed` / `source-read-failed` /
+  `transferrer-backlog` / `transferrer-dump-failed` /
+  `transferrer-drop-failed` / `transferrer-write-failed`。
 - **命名约定**：**发生处前缀**——源读取器自己发生的失败带 `source-`
-  （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的失败
-  带 `transferrer-`（现在两个：`transferrer-dump-failed`、
-  `transferrer-write-failed`）。其余按发生处命名。
+  （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的信号
+  带 `transferrer-`（现在四个：`transferrer-backlog`、
+  `transferrer-dump-failed`、`transferrer-drop-failed` /
+  `transferrer-write-failed`）；降级读器自己发生的信号带
+  `degraded-reader-`（现在一个：`degraded-reader-close-failed`）。
+  `initialize-failed` / `read-failed` / `seek-failed` 尚未定前缀。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 

@@ -92,18 +92,5 @@ export default class SourceConsumptionAgent extends Part.Abstract {
     }
 
     transferrer[TRANSFERRER.$I.WRITE](chunk);
-    this.observeBacklog();
-  }
-
-  observeBacklog() {
-    const distributor = this[PART.$I.DISTRIBUTOR];
-    const transferrer = distributor[$I.TRANSFERRER];
-    const warningLength = Options.Get.MaxBacklogWarningByteLength(distributor);
-
-    if (transferrer.pendingByteLength > warningLength) {
-      this[PART.$I.WARN]('backlog', {
-        byteLength: transferrer.pendingByteLength,
-      });
-    }
   }
 }

@@ -149,7 +149,7 @@ describe('>promise', () => {
     assert.match(failure.message, EXPECTED.ABORTED.message);
   });
 
-  it('should dispatch warn(drop-failed) when the release fails', async () => {
+  it('should dispatch warn(transferrer-drop-failed) when the release fails', async () => {
     const cause = new Error('the medium refuses to release');
 
     class RefusingDropTransferrer extends TestTransferrer {
@@ -174,12 +174,12 @@ describe('>promise', () => {
 
     assert.deepEqual(
       warns.map((warn) => warn.code),
-      ['drop-failed'],
+      ['transferrer-drop-failed'],
     );
     assert.equal(warns[0].payload, cause);
   });
 
-  it('should dispatch warn(close-failed) when the medium refuses to close', async () => {
+  it('should dispatch warn(degraded-reader-close-failed) when it refuses', async () => {
     const cause = new Error('the medium refuses to close');
 
     class RefusingCloseReader extends TestDegradedChunkReader {
@@ -202,7 +202,7 @@ describe('>promise', () => {
 
     assert.deepEqual(
       warns.map((warn) => warn.code),
-      ['close-failed'],
+      ['degraded-reader-close-failed'],
     );
     assert.equal(warns[0].payload, cause);
   });

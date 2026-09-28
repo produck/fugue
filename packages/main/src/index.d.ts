@@ -69,7 +69,6 @@ export declare abstract class Transferrer<
 
   get dumping(): Promise<void> | null;
   get done(): boolean;
-  get error(): unknown;
   get dropped(): boolean;
   get pendingByteLength(): number;
 
@@ -135,9 +134,9 @@ export declare namespace Event {
   }
 
   type WarnDetail =
-    | { code: 'backlog'; payload: { byteLength: number } }
-    | { code: 'close-failed'; payload: unknown }
-    | { code: 'drop-failed'; payload: unknown }
+    | { code: 'transferrer-backlog'; payload: { byteLength: number } }
+    | { code: 'degraded-reader-close-failed'; payload: unknown }
+    | { code: 'transferrer-drop-failed'; payload: unknown }
     | { code: 'transferrer-dump-failed'; payload: unknown }
     | { code: 'initialize-failed'; payload: unknown }
     | { code: 'read-failed'; payload: unknown }

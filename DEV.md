@@ -326,7 +326,7 @@
 - **宿主取值器抛异常一律放行（2026-09-25 定）**：这属于研发错误，下游工程师
   必须保证它不抛。所以 `Tune` 的安装期求值、`Get` / `snapshot` /
   `get options`，以及每个内部读取点（`ForkHighWaterMark` 在 `fork()` 构造
-  处、`degradeIfNeeded` 两项、`observeBacklog` 一项）都不加 `try`。
+  处、`degradeIfNeeded` 两项、转移器 `$I.WRITE` 一项）都不加 `try`。
   两处后果要知道：`fork()` 是**什么都没建**就抛（拷贝
   未注册、`fork` 事件不派）；pull 里的读取点抛 = 那趟 pull 失败，异常照旧
   到达读侧（拷贝的 read 拒绝），也不出事件——这是放行，不是拦截。
@@ -358,16 +358,16 @@
   `degraded` 布尔就会已置真），后果是后续每趟 pull 都拿 `null[…]` 的
   TypeError 顶掉真正的原因
   （实测见 `logs/probe-degrade-failure.mjs`）。
-- **积压告警**：`pull()` 走写侧那一趟在 `$I.WRITE` 之后问一次
-  `observeBacklog()`——`pendingByteLength > MaxBacklogWarningByteLength`
+- **积压告警**：报告点在**转移器**里——`$I.WRITE` 入队后问一次
+  `pendingByteLength > MaxBacklogWarningByteLength`
   （选项，读经 `Options.Get`）就派
-  `warn('backlog', { byteLength })`——**不去抖：只要还在阈值以上，每写一笔派
-  一次**（水准信号，限频归宿主；通常本来就被忽略，代价只是每次一点分配），
-  该选项默认**跟随** `MaxStashByteLength`。这条信号只存在
+  `warn('transferrer-backlog', { byteLength })`——**不去抖：只要还在阈值以上
+  每写一笔派一次**（水准信号，限频归宿主；通常本来就被忽略，代价只是每次一点
+  分配），该选项默认**跟随** `MaxStashByteLength`。这条信号只存在
   于降级相：内存相被降级触发天然封顶，而积压按设计不设上限、不闸门、
   也不反压源（“顶住死盘”的代价由宿主从这条 `warn` 里看见）。
 - **它的采样点在写入路径上**（这条信号的边界条件，调阈值前先看这里）：
-  `observeBacklog()` 只在某一趟 pull 真的写下一笔时跑，于是——
+  `$I.WRITE` 只在某一趟 pull 真的写下一笔时跑，于是——
   ① 消费者暂停或源到头之后不再有 pull，**也就不再采样**：哪怕排水还在排、
   积压仍很大；② 所以最后一条事件**不是峰值**，只是最后一次采样时的量；
   ③ 条件消失是**静默**的（没有“恢复”事件），要判断“现在好了没”得宿主
@@ -557,8 +557,9 @@
   链体的每个 `await` 都在播种之后，读路径拿到的一定是就位点。
 - `$I.CLOSE`（**键归基类**，降级族覆盖同一个键）：`I.CLOSED` 幂等 →
   **发起式**调 `_I.CLOSE`——**同步抛也经 promise 转手**，失败派
-  `warn('close-failed', cause)`（2026-09-26：不静默吞；若让它逃出去，
-  destroy 的遍历会被打断）。**不** `await I.INITIALIZED`：链体里第一句
+  `warn('degraded-reader-close-failed', cause)`
+  （2026-09-26：不静默吞；若让它逃出去，destroy 的遍历会被打断）。
+  **不** `await I.INITIALIZED`：链体里第一句
   就是等 `get dumping`，而 `dumping` 在死盘上永不落地，等它就会把收摊
   一起挂住；`get closed` 暴露状态。
   内存族的 close 是基类**空实现**（无资源），所以 `destroy()` 对两相
@@ -663,7 +664,8 @@
     `$I.DROP` 之前的时序里。放开载荷与 stash 同形（`PENDING_CHUNKS`
     置空 → drain 靠队列空收手）。一处不同：介质那半**归它自己观测**
     （2026-09-26 改）：`$I.DROP()` 是 async、`await this[_I.DROP]()`，但它
-    仍**不被 await**——失败由它就地派 `warn('drop-failed', cause)` 并**只报
+    仍**不被 await**——失败由它就地派
+    `warn('transferrer-drop-failed', cause)` 并**只报
     **只报不抛**（收摊面 fail-soft，2026-09-27 改）；调用方（`$I.DESTROY`）因此
     连吞都不用。
     “不被 await”是硬约束：宿主的放开若挂住（死盘），`destroy()` 不许被一起
@@ -692,7 +694,8 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
     宿主 `_I.WRITE` 调用数 0、`pendingByteLength` 不清零，对照支排空跑完
     （写 2 笔、队列归零）；哨兵用例
     `should keep the chunks a failed dump left undrained`。排空自己那笔
-    失败则由 `break` 收手（写进 `I.DRAINING_ERROR` 供读侧用）。
+    失败则由 `I.DRAIN_HEAD` 收手（重试用尽才 `break`，并闩
+    `I.DRAINING_ERROR` 供读侧用）。
   - **单飞位在唯一出口复位**：停止条件写成循环的首项
     `while (DUMPING_ERROR === null && 队列非空)`，而不是闸后的早退——
     否则早退会把一个已落定的 promise 留在“正在排”的位置上。今天无观测面
@@ -748,7 +751,8 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `I.DRAINING_ERROR` / `I.DONE` / `I.DROPPED` / `I.DUMPING` /
   `I.DUMPING_ERROR`）。
   读口是 getter：
-  `dumping` / `done` / `error` / `dropped` / `pendingByteLength`，其余交互
+  `dumping` / `done` / `dropped` / `pendingByteLength`；两组错误态合成的
+  那一个走私有 `I.ERROR`（不外露），其余交互
   全走 `$I` 原语。
 - **积压计数 `I.PENDING_BYTE_LENGTH` / `get pendingByteLength`**：只数
   **切换之后新堆上去、还没落盘**的字节（`$I.WRITE` 加、drain 每写一笔减、
@@ -862,9 +866,10 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **报告点跟着发生处**（2026-09-26）：降级读者的四个宿主模板成员在**调用
   现场**派事件，派发器就是分发器（读器构造时就拿到了它）：
   `_I.INITIALIZE` → `initialize-failed` · `_I.SEEK` → `seek-failed` ·
-  `_I.READ` → `read-failed` · `_I.CLOSE` → `close-failed`（同步抛也经
-  promise 转手）。前三个**报完照旧抛出**（控制流不变）；`close-failed`
-  是即发即弃，只报不抛。源读取器同样：平台 `read()` 拒 → 它派
+  `_I.READ` → `read-failed` · `_I.CLOSE` → `degraded-reader-close-failed`
+  （同步抛也经 promise 转手）。前三个**报完照旧抛出**（控制流不变）；
+  `degraded-reader-close-failed` 是即发即弃，只报不抛。源读取器同样：
+  平台 `read()` 拒 → 它派
   `source-read-failed` 再原样抛出（那趟 pull 于是照旧失败）；
   平台 `cancel()` 拒 → 它派 `source-cancel-failed`，**只报不抛**（收摊面
   fail-soft）。**出口唯一**（2026-09-26 收口）：以上所有 `warn` 都
@@ -875,10 +880,10 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   塞不进分发器），于是三个宿主模板成员各自就地上报：
   `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；包装错随后
   照旧抛给调用链）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在
-  后续每趟 pull 里由 `$I.WRITE` 同步抛）· `_I.DROP` → `drop-failed`
+  后续每趟 pull 里由 `$I.WRITE` 同步抛）· `_I.DROP` → `transferrer-drop-failed`
   后只报不抛（收摊面 fail-soft）。
-- **重复上报不去抖**：与 `backlog` 同族——一个因（dump 被拒）可以让每个
-  降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。
+- **重复上报不去抖**：与 `transferrer-backlog` 同族——一个因（dump 被拒）可以让
+  每个降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。
 - **漏斗唯一**：所有内向失败统一从拷贝流的 `read()` 抛出并拒该拷贝（监听器
   抛不在此列，已实测）。
 

@@ -680,8 +680,9 @@ sequenceDiagram
 模块通过事件机制提供感知能力。**已实现的是积压**：降级相里“切换之后新堆
 上去、还没落盘的字节数”超过阈值（选项 `MaxBacklogWarningByteLength`，
 默认跟随 `MaxStashByteLength`）就派一次
-`warn('backlog', { byteLength })`——**不去抖**：只要还在阈值以上，每写一笔
-就派一次（水准信号，限频归宿主）。积压只观察、不闸门，也不反压源。
+`warn('transferrer-backlog', { byteLength })`——**不去抖**：只要还在阈值
+以上，每写一笔就派一次（水准信号，限频归宿主）。积压只观察、不闸门，
+也不反压源。
 **未实现的是拷贝存活时间**（另一条
 信号，属拷贝侧）。框架**不装默认处理器**——不在库里替宿主决定怎么记事：
 宿主用 `addEventListener('warn', ...)` 自己接（日志、监控、告警）；这是
@@ -702,7 +703,8 @@ sequenceDiagram
   落位——相位只有一个事实来源）；**切换发生那一刻**另派 `degrade`
   事件（载荷 `{ byteLength }`：切换当刻的 stash 字节数）。
 - 是否已终结可用性：`distributor.terminated`。
-- 积压：`warn('backlog', { byteLength })`（降级相，超阈值的每一笔都派）。
+- 积压：`warn('transferrer-backlog', { byteLength })`（降级相，
+  超阈值的每一笔都派）。
 - fork 上线、终结、可恢复异常：`fork` / `terminate` / `warn` 事件。
 
 **仓库内 / 调试**（经受保护符号，宿主拿不到）：
@@ -731,10 +733,11 @@ sequenceDiagram
 
 源流正常结束（源出错已有 `warn('source-read-failed')` 兜着）、全部 fork
 离开等更细粒度事件尚未实现，属规划。`warn` 的
-code 现在有十个：`backlog` / `close-failed` / `drop-failed` /
-`initialize-failed` / `read-failed` / `seek-failed` / `source-cancel-failed` /
-`source-read-failed` / `transferrer-dump-failed` /
-`transferrer-write-failed`（载荷随 code；
+code 现在有十个：`degraded-reader-close-failed` /
+`initialize-failed` / `read-failed` / `seek-failed` /
+`source-cancel-failed` / `source-read-failed` /
+`transferrer-backlog` / `transferrer-dump-failed` /
+`transferrer-drop-failed` / `transferrer-write-failed`（载荷随 code；
 框架不装默认处理器，宿主自己接）。
 `destroy()`（强档）不另派事件：它是
 宿主动作，调用方本来就知道——收摊何时完成看它返回的那个 Promise。

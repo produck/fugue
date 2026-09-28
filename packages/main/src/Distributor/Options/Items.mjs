@@ -10,7 +10,7 @@ const items = [
     assert: Assert.NonNegativeInteger,
   },
   {
-    // Read after every write to the transferrer (observeBacklog()).
+    // Read after every write to the transferrer ($I.WRITE).
     name: 'MaxBacklogWarningByteLength',
     defaultValue: (options) => options.MaxStashByteLength(options),
     assert: Assert.NonNegativeInteger,
@@ -28,25 +28,25 @@ const items = [
     assert: Assert.HighWaterMark,
   },
   {
-    // TODO: read once per dump attempt, when the retry is wired.
+    // Read once at the start of every dump, by its retry loop.
     name: 'MaxDumpRetryCount',
     defaultValue: Infinity,
     assert: Assert.NonNegativeIntegerOrInfinity,
   },
   {
-    // TODO: read once per drain attempt, when the retry is wired.
+    // Read once per drained chunk, by the head retry.
     name: 'MaxDrainRetryCount',
     defaultValue: Infinity,
     assert: Assert.NonNegativeIntegerOrInfinity,
   },
   {
-    // TODO: read once per dump retry wait, when the retry is wired.
+    // Read once at the start of every dump, with the retry count.
     name: 'DumpRetryInterval',
     defaultValue: 1 * SECOND,
     assert: Assert.NonNegativeInteger,
   },
   {
-    // TODO: read once per drain retry wait, when the retry is wired.
+    // Read once per drained chunk, with the retry count.
     name: 'DrainRetryInterval',
     defaultValue: 1 * SECOND,
     assert: Assert.NonNegativeInteger,

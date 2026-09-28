@@ -10,7 +10,10 @@ import {
   TestTransferrer,
 } from '#test/baseline.mjs';
 
-import { _I as HOST } from '../src/Distributor/DegradedChunkReader/Transferrer/_Symbol.mjs';
+import {
+  I as TRANSFERRER_I,
+  _I as HOST,
+} from '../src/Distributor/DegradedChunkReader/Transferrer/_Symbol.mjs';
 
 describe('Transferrer', () => {
   describe('constructor()', () => {
@@ -37,7 +40,7 @@ describe('Transferrer', () => {
 
         assert.equal(medium.done, false);
         assert.equal(medium.dropped, false);
-        assert.equal(medium.error, null);
+        assert.equal(medium[TRANSFERRER_I.ERROR], null);
       });
     });
   });
@@ -132,7 +135,7 @@ describe('Transferrer', () => {
       refuseDump();
       await settle();
 
-      assert.equal(medium.error, cause);
+      assert.equal(medium[TRANSFERRER_I.ERROR], cause);
       assert.equal(writes, 0);
       assert.equal(medium.pendingByteLength, 1);
 
@@ -175,7 +178,7 @@ describe('Transferrer', () => {
       const medium = family.created.at(-1);
 
       assert.equal(calls, 2);
-      assert.equal(medium.error, cause);
+      assert.equal(medium[TRANSFERRER_I.ERROR], cause);
     });
 
     it('should land the dump when the medium answers the retry', async () => {
@@ -217,7 +220,7 @@ describe('Transferrer', () => {
       const medium = family.created.at(-1);
 
       assert.equal(calls, 2);
-      assert.equal(medium.error, null);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
       assert.equal(medium.medium[0].toString(), 'a');
     });
 
@@ -263,7 +266,150 @@ describe('Transferrer', () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       assert.equal(calls, atRelease);
-      assert.equal(medium.error, null);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
+    });
+
+    it('should retry the write when the medium answers the second time', async () => {
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class HiccupTransferrer extends TestTransferrer {
+        async [HOST.WRITE](buffer) {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          if (calls === 1) {
+            throw new Error('a hiccup');
+          }
+
+          return super[HOST.WRITE](buffer);
+        }
+      }
+
+      const family = makeFamily({ medium: HiccupTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+      const warns = [];
+
+      distributor.addEventListener('warn', (event) => warns.push(event.detail));
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Options.Tune.MaxDrainRetryCount(distributor, 1);
+      Options.Tune.DrainRetryInterval(distributor, 0);
+
+      await reading.read();
+      await reading.read();
+      await retried;
+      await settle();
+
+      const medium = family.created.at(-1);
+      const attempts = warns.filter(
+        (warn) => warn.code === 'transferrer-write-failed',
+      );
+
+      assert.equal(calls, 2);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
+      assert.equal(
+        medium.medium.map((chunk) => chunk.toString()).join(''),
+        'ab',
+      );
+      assert.equal(attempts.length, 1);
+      assert.equal(attempts[0].payload.retry, 0);
+    });
+
+    it('should give up the drain once the retry option runs out', async () => {
+      const cause = new Error('the medium keeps failing');
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class FailingWriteTransferrer extends TestTransferrer {
+        async [HOST.WRITE]() {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          throw cause;
+        }
+      }
+
+      const family = makeFamily({ medium: FailingWriteTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Options.Tune.MaxDrainRetryCount(distributor, 1);
+      Options.Tune.DrainRetryInterval(distributor, 0);
+
+      await reading.read();
+      reading.read().catch(() => {});
+      await retried;
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(calls, 2);
+      assert.equal(medium[TRANSFERRER_I.ERROR], cause);
+    });
+
+    it('should stop draining once the transferrer is released', async () => {
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class FailingWriteTransferrer extends TestTransferrer {
+        async [HOST.WRITE]() {
+          calls += 1;
+
+          if (calls === 2) {
+            release();
+          }
+
+          throw new Error('nope');
+        }
+      }
+
+      const family = makeFamily({ medium: FailingWriteTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Options.Tune.MaxStashByteLength(distributor, 0);
+      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Options.Tune.MaxDrainRetryCount(distributor, Infinity);
+      Options.Tune.DrainRetryInterval(distributor, 0);
+
+      await reading.read();
+      reading.read().catch(() => {});
+      await retried;
+
+      const medium = family.created.at(-1);
+
+      assert.ok(calls > 1);
+
+      await distributor.destroy();
+
+      const atRelease = calls;
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      assert.equal(calls, atRelease);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
     });
 
     it('should answer zero once the store is released', async () => {
@@ -376,61 +522,6 @@ describe('Transferrer', () => {
       await distributor.destroy();
 
       assert.equal(medium.done, true);
-    });
-  });
-
-  describe('.error', () => {
-    it('should keep the first failure', async () => {
-      const cause = new Error('the only failure');
-
-      class FailingTransferrer extends TestTransferrer {
-        async [HOST.WRITE]() {
-          throw cause;
-        }
-      }
-
-      const family = makeFamily({ medium: FailingTransferrer });
-      const distributor = new family.Distributor(makeSource(['a', 'b', 'c']));
-      const reading = distributor.fork().getReader();
-
-      Options.Tune.MaxStashByteLength(distributor, 0);
-
-      await reading.read();
-
-      const medium = family.created.at(-1);
-
-      await reading.read().catch(() => {});
-
-      assert.equal(medium.error, cause);
-
-      await reading.read().catch(() => {});
-
-      assert.equal(medium.error, cause);
-
-      await distributor.destroy();
-
-      assert.equal(medium.error, cause);
-    });
-
-    it('should be the cause of the rejected read', async () => {
-      const cause = new Error('the medium failed');
-
-      class FailingTransferrer extends TestTransferrer {
-        async [HOST.DUMP]() {
-          throw cause;
-        }
-      }
-
-      const family = makeFamily({ medium: FailingTransferrer });
-      const distributor = new family.Distributor(makeSource(['a']));
-      const reading = distributor.fork().getReader();
-
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Asset.noRetry(distributor);
-
-      assert.equal((await reading.read()).value.toString(), 'a');
-      await assert.rejects(reading.read(), cause);
-      assert.equal(family.created.at(-1).error, cause);
     });
   });
 

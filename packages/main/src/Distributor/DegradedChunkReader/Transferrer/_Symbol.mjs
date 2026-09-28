@@ -9,6 +9,8 @@ const I_WAITING_POSITION_TABLE = Symbol('.#waitingPositionTable');
 const I_DRAINING = Symbol('.#draining');
 const I_DRAINING_ERROR = Symbol('.#drainingError');
 const I_DRAIN = Symbol('.#drain()');
+const I_DRAIN_HEAD = Symbol('.#drainHead()');
+const I_ERROR = Symbol('.#error');
 const I_DONE = Symbol('.#done');
 const I_DROPPED = Symbol('.#dropped');
 const I_DUMP = Symbol('.#dump()');
@@ -24,6 +26,8 @@ export const I = deepFreeze({
   DRAINING: I_DRAINING,
   DRAINING_ERROR: I_DRAINING_ERROR,
   DRAIN: I_DRAIN,
+  DRAIN_HEAD: I_DRAIN_HEAD,
+  ERROR: I_ERROR,
   DONE: I_DONE,
   DROPPED: I_DROPPED,
   DUMP: I_DUMP,

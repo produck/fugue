@@ -38,11 +38,10 @@ it('should dispatch warn(transferrer-dump-failed) when the dump fails', async ()
 
   assert.deepEqual(
     warns.map((warn) => warn.code),
-    ['transferrer-dump-failed', 'initialize-failed'],
+    ['transferrer-dump-failed'],
   );
-  assert.equal(warns[0].payload, refused);
-  assert.match(warns[1].payload.message, /Failed to dump the ChunkStash/);
-  assert.equal(warns[1].payload.cause, refused);
+  assert.equal(warns[0].payload.cause, refused);
+  assert.equal(warns[0].payload.retry, 0);
 });
 
 it('should dispatch warn(transferrer-write-failed) when the write fails', async () => {
@@ -62,6 +61,7 @@ it('should dispatch warn(transferrer-write-failed) when the write fails', async 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
   Options.Tune.MaxStashByteLength(distributor, 0);
   Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+  Options.Asset.noRetry(distributor);
 
   await reader.read();
 
@@ -77,9 +77,21 @@ it('should dispatch warn(transferrer-write-failed) when the write fails', async 
 
 it('should dispatch warn(transferrer-dump-failed) once per attempt', async () => {
   const cause = new Error('the medium never answers');
+  let calls = 0;
+  let release = null;
+
+  const retried = new Promise((resolve) => {
+    release = resolve;
+  });
 
   class RefusingTransferrer extends TestTransferrer {
     [TRANSFERRER.DUMP]() {
+      calls += 1;
+
+      if (calls === 2) {
+        release();
+      }
+
       throw cause;
     }
   }
@@ -95,6 +107,7 @@ it('should dispatch warn(transferrer-dump-failed) once per attempt', async () =>
   Options.Tune.DumpRetryInterval(distributor, 0);
 
   await reading.read();
+  await retried;
   await settle();
 
   const attempts = warns.filter(
@@ -108,7 +121,7 @@ it('should dispatch warn(transferrer-dump-failed) once per attempt', async () =>
   assert.equal(attempts[1].payload.retry, 1);
 });
 
-it('should dispatch warn(backlog) once the backlog is over the limit', async () => {
+it('should dispatch warn(transferrer-backlog) once over the limit', async () => {
   class HangingWriteTransferrer extends TestTransferrer {
     [TRANSFERRER.WRITE]() {
       return new Promise(() => {});
@@ -130,7 +143,7 @@ it('should dispatch warn(backlog) once the backlog is over the limit', async () 
   await reading.read();
 
   assert.equal(warns.length, 1);
-  assert.equal(warns[0].code, 'backlog');
+  assert.equal(warns[0].code, 'transferrer-backlog');
   assert.equal(warns[0].payload.byteLength, 5);
 });
 
