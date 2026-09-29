@@ -9,6 +9,7 @@ import * as SourceReader from './SourceReader/index.mjs';
 
 import SourceConsumptionAgent from './SourceConsumptionAgent.mjs';
 import ForkedReadableStreamRegistry from './ForkedReadableStreamRegistry.mjs';
+import * as Warning from './Warning.mjs';
 import * as Checker from './Checker.mjs';
 import * as Event from './Event.mjs';
 import * as Options from './Options/index.mjs';
@@ -27,6 +28,7 @@ class ReadableStreamDistributor extends EventTarget {
   [A.$I.STASH] = new ChunkStash.Concrete();
   [A.$I.REGISTRY] = new ForkedReadableStreamRegistry();
   [$I.TERMINATION] = null;
+  [I.WARNING_COUNT_RECORD] = new Warning.CountRecord();
   [I.TRANSFERRER_ARGS] = [];
   [$I.TRANSFERRER] = null;
   [$I.DESTROYED] = null;
@@ -59,6 +61,7 @@ class ReadableStreamDistributor extends EventTarget {
   }
 
   [$I.WARN](code, payload) {
+    this[I.WARNING_COUNT_RECORD].count(code);
     this.dispatchEvent(new Event.Warn(code, payload));
   }
 
@@ -79,6 +82,14 @@ class ReadableStreamDistributor extends EventTarget {
     this.dispatchEvent(new Event.Fork(forked));
 
     return forked;
+  }
+
+  getWarningCount(code) {
+    if (!Warning.CODE_LIST.includes(code)) {
+      ThrowTypeError('code', 'warning code');
+    }
+
+    return this[I.WARNING_COUNT_RECORD].get(code);
   }
 
   [$I.DEGRADE]() {

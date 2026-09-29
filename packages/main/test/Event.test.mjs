@@ -58,7 +58,7 @@ describe('Event', () => {
 
     describe('>detail', () => {
       it('should carry the code and its payload', () => {
-        const payload = { byteLength: 4096 };
+        const payload = { pendingByteLength: 4096 };
         const event = new Event.Warn('transferrer-backlog', payload);
 
         assert.deepEqual(event.detail, {

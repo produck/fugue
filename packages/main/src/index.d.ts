@@ -109,6 +109,7 @@ export declare abstract class Distributor<
   get terminated(): boolean;
 
   fork(): ReadableStream<Chunk>;
+  getWarningCount(code: Event.WarnCode): number;
   setTransferrerArgs(...args: unknown[]): void;
   terminate(): void;
   destroy(): Promise<void>;
@@ -150,7 +151,7 @@ export declare namespace Event {
     'source-read-failed': CausePayload;
     'transferrer-dump-failed': RetryPayload;
     'transferrer-write-failed': RetryPayload;
-    'transferrer-backlog': { byteLength: number };
+    'transferrer-backlog': { pendingByteLength: number };
     'transferrer-drop-failed': CausePayload;
   }
 

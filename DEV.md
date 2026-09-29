@@ -361,9 +361,9 @@
 - **积压告警**：报告点在**转移器**里——`$I.WRITE` 入队后问一次
   `pendingByteLength > MaxBacklogWarningByteLength`
   （选项，读经 `Options.Get`）就派
-  `warn('transferrer-backlog', { byteLength })`——**不去抖：只要还在阈值以上
-  每写一笔派一次**（水准信号，限频归宿主；通常本来就被忽略，代价只是每次一点
-  分配），该选项默认**跟随** `MaxStashByteLength`。这条信号只存在
+  `warn('transferrer-backlog', { pendingByteLength })`——**不去抖：只要还在
+  阈值以上每写一笔派一次**（水准信号，限频归宿主；通常本来就被忽略，代价
+  只是每次一点分配），该选项默认**跟随** `MaxStashByteLength`。这条信号只存在
   于降级相：内存相被降级触发天然封顶，而积压按设计不设上限、不闸门、
   也不反压源（“顶住死盘”的代价由宿主从这条 `warn` 里看见）。
 - **它的采样点在写入路径上**（这条信号的边界条件，调阈值前先看这里）：
@@ -897,6 +897,13 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **重复上报不去抖**：与 `transferrer-backlog` 同族——一个因（dump 被拒）可以让
   每个降级 reader 各派一条（重试则各派多条）
   `degraded-reader-initialize-failed`。水准信号，限频归宿主。
+- **计数由分发器记**（2026-09-29 定）：`$I.WARN` 是唯一出口，也是唯一计数点
+  ——先记数、再派发，所以监听器里 `getWarningCount(code)` 读到的次数**含
+  当前这一条**（宿主“第 N 次之后再动作”的策略才写得成立）；未报过的 code 返回
+  `0`；不在 `CODE_LIST` 里的 code 抛 `TypeError`（运行期校验；类型层面另有
+  `WarnPayloadMap` 兜住）。code 词汇表在 `Warning.mjs` 里按发生处分层
+  （`CODES`），再扁平化成 `CODE_LIST`：既预制计数表的 key，也兼做
+  `getWarningCount` 的合法性判据。
 - **漏斗唯一**：所有内向失败统一从拷贝流的 `read()` 抛出并拒该拷贝（监听器
   抛不在此列，已实测）。
 - **谁持有那份数据，决定谁亲自重试**（2026-09-29 定）：框架只在「它仍持有

@@ -680,7 +680,7 @@ sequenceDiagram
 模块通过事件机制提供感知能力。**已实现的是积压**：降级相里“切换之后新堆
 上去、还没落盘的字节数”超过阈值（选项 `MaxBacklogWarningByteLength`，
 默认跟随 `MaxStashByteLength`）就派一次
-`warn('transferrer-backlog', { byteLength })`——**不去抖**：只要还在阈值
+`warn('transferrer-backlog', { pendingByteLength })`——**不去抖**：只要还在阈值
 以上，每写一笔就派一次（水准信号，限频归宿主）。积压只观察、不闸门，
 也不反压源。
 **未实现的是拷贝存活时间**（另一条
@@ -703,8 +703,10 @@ sequenceDiagram
   落位——相位只有一个事实来源）；**切换发生那一刻**另派 `degrade`
   事件（载荷 `{ byteLength }`：切换当刻的 stash 字节数）。
 - 是否已终结可用性：`distributor.terminated`。
-- 积压：`warn('transferrer-backlog', { byteLength })`（降级相，
+- 积压：`warn('transferrer-backlog', { pendingByteLength })`（降级相，
   超阈值的每一笔都派）。
+- warn 计数：`distributor.getWarningCount(code)`（按 code 累计，未报过返回
+  `0`；非 code 抛 `TypeError`）。
 - fork 上线、终结、可恢复异常：`fork` / `terminate` / `warn` 事件。
 
 **仓库内 / 调试**（经受保护符号，宿主拿不到）：

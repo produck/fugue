@@ -3,6 +3,9 @@ import * as Ow from '@produck/ow';
 import { I } from './_Symbol.mjs';
 import { PART } from './_External.mjs';
 import * as Part from '../Part/index.mjs';
+import * as Warning from '../Warning.mjs';
+
+const CODE = Warning.CODES.SOURCE;
 
 export default class SourceReader extends Part.Abstract {
   [I.DONE] = false;
@@ -45,7 +48,7 @@ export default class SourceReader extends Part.Abstract {
 
       return result;
     } catch (cause) {
-      this[PART.$I.WARN]('source-read-failed', { cause });
+      this[PART.$I.WARN](CODE.READ_FAILED, { cause });
       Ow.throw(cause);
       // c8/V8: the `finally` clause range never counts.
       /* c8 ignore next */
@@ -70,7 +73,7 @@ export default class SourceReader extends Part.Abstract {
     try {
       await this[I.READER].cancel(reason);
     } catch (cause) {
-      this[PART.$I.WARN]('source-cancel-failed', { cause });
+      this[PART.$I.WARN](CODE.CANCEL_FAILED, { cause });
     }
   }
 }

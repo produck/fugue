@@ -5,7 +5,9 @@ import * as ChunkReader from '../ChunkReader/index.mjs';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_External.mjs';
 import * as Options from '../Options/index.mjs';
+import * as Warning from '../Warning.mjs';
 
+const CODE = Warning.CODES.DEGRADED_READER;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AbstractDegradedChunkReader extends ChunkReader.Abstract {
@@ -49,7 +51,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         break;
       } catch (cause) {
         state.cause = cause;
-        this[PART.$I.WARN]('degraded-reader-initialize-failed', { ...state });
+        this[PART.$I.WARN](CODE.INITIALIZE_FAILED, { ...state });
 
         if (state.retry >= maxRetryCount) {
           break;
@@ -84,7 +86,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         count++;
       }
     } catch (cause) {
-      this[PART.$I.WARN]('degraded-reader-seek-failed', { cause });
+      this[PART.$I.WARN](CODE.SEEK_FAILED, { cause });
       Ow.throw(cause);
     }
 
@@ -101,7 +103,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       await this[_I.CLOSE]();
     } catch (cause) {
-      this[PART.$I.WARN]('degraded-reader-close-failed', { cause });
+      this[PART.$I.WARN](CODE.CLOSE_FAILED, { cause });
     }
   }
 
@@ -129,7 +131,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
     try {
       result = await this[_I.READ]();
     } catch (cause) {
-      this[PART.$I.WARN]('degraded-reader-read-failed', { cause });
+      this[PART.$I.WARN](CODE.READ_FAILED, { cause });
       Ow.throw(cause);
     }
 

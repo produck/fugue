@@ -5,7 +5,9 @@ import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { PART, _A } from './_External.mjs';
 import * as Part from '../../Part/index.mjs';
 import * as Options from '../../Options/index.mjs';
+import * as Warning from '../../Warning.mjs';
 
+const CODE = Warning.CODES.TRANSFERRER;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AbstractTransferrer extends Part.Abstract {
@@ -65,7 +67,7 @@ class AbstractTransferrer extends Part.Abstract {
         break;
       } catch (cause) {
         state.cause = cause;
-        this[PART.$I.WARN]('transferrer-dump-failed', { ...state });
+        this[PART.$I.WARN](CODE.DUMP_FAILED, { ...state });
 
         if (state.retry >= maxRetryCount) {
           break;
@@ -111,7 +113,7 @@ class AbstractTransferrer extends Part.Abstract {
         return true;
       } catch (cause) {
         state.cause = cause;
-        this[PART.$I.WARN]('transferrer-write-failed', { ...state });
+        this[PART.$I.WARN](CODE.WRITE_FAILED, { ...state });
 
         if (state.retry >= maxRetryCount) {
           break;
@@ -183,11 +185,10 @@ class AbstractTransferrer extends Part.Abstract {
 
     const distributor = this[PART.$I.DISTRIBUTOR];
     const warningLength = Options.Get.MaxBacklogWarningByteLength(distributor);
+    const pendingByteLength = this[I.PENDING_BYTE_LENGTH];
 
-    if (this[I.PENDING_BYTE_LENGTH] > warningLength) {
-      this[PART.$I.WARN]('transferrer-backlog', {
-        byteLength: this[I.PENDING_BYTE_LENGTH],
-      });
+    if (pendingByteLength > warningLength) {
+      this[PART.$I.WARN](CODE.BACKLOG, { pendingByteLength });
     }
   }
 
@@ -222,7 +223,7 @@ class AbstractTransferrer extends Part.Abstract {
     try {
       await this[_I.DROP]();
     } catch (cause) {
-      this[PART.$I.WARN]('transferrer-drop-failed', { cause });
+      this[PART.$I.WARN](CODE.DROP_FAILED, { cause });
     }
   }
 

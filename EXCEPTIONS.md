@@ -79,7 +79,8 @@
     `ForkedReadableStream.test.mjs` ›
     `should dispatch warn(degraded-reader-close-failed) when it refuses`。
 - **\[L1\]** · **`transferrer-backlog`**（积压超阈值——“慢”带来的危险状态）
-  - 观测：`transferrer-backlog`，超阈值后每写一笔一条（不去抖）。
+  - 观测：`transferrer-backlog`，超阈值后每写一笔一条（不去抖），载荷
+    `{ pendingByteLength }`。
   - 失败域：无（不改状态、不挡读、不反压源）。
   - 后处理：无（只观测；内存代价归宿主——限频 / 扩容 / 重建都是宿主的决定）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
@@ -217,7 +218,8 @@ refused to open`。
   派发（元件那份 `$I.WARN` 只是转发，真出口仍是分发器那一个）；每个 code
   只有**一个**报告点，且都落在**发生处**（没有代派）。
 - **不去抖、不聚合、不发回落事件**：同一个因可以出多条（每次尝试一条），
-  这些是水准信号，限频与计数归宿主。`transferrer-backlog` 是唯一的“带量”信号
+  这些是水准信号，限频归宿主；**计数由分发器记账**（`getWarningCount(code)`；
+  非 code 抛 `TypeError`），`transferrer-backlog` 是唯一的“带量”信号
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
 - **10 个 code**：`degraded-reader-close-failed` /
@@ -245,4 +247,5 @@ refused to open`。
 - 不翻译、不包装宿主异常：`warn` 载荷里和沿调用链抛出的都是**宿主给出的
   那个对象本身**，dump 失败也不例外（`transferrer-dump-failed` 的载荷即
   将闩住、随后由 `$I.WRITE` / `$I.WAIT_POSITION` 原样抛出的那个因）。
-- 不做失败计数与熔断阈值：没有这样的配置项，也不打算有。
+- 不做阈值与熔断：`getWarningCount(code)` 只把次数露出来，**按次数做什么**仍归
+  宿主（例如“同一 code 第 N 次之后 `terminate()`”）。

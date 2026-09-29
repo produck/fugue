@@ -144,7 +144,7 @@ it('should dispatch warn(transferrer-backlog) once over the limit', async () => 
 
   assert.equal(warns.length, 1);
   assert.equal(warns[0].code, 'transferrer-backlog');
-  assert.equal(warns[0].payload.byteLength, 5);
+  assert.equal(warns[0].payload.pendingByteLength, 5);
 });
 
 it('should dispatch warn(degraded-reader-initialize-failed) on the switch', async () => {
