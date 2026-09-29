@@ -12,9 +12,14 @@ abstract classes — `Distributor`, `DegradedChunkReader`, `Transferrer` —
 and the framework does the rest: fan-out, bookkeeping of positions,
 backpressure, retries and reporting.
 
+On Node, one medium is already written:
+`@produck/readable-stream-distributor-degraded-node-file` — see
+[File medium](#file-medium).
+
 - [How it works](#how-it-works)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [File medium](#file-medium)
 - [Examples](#examples)
 - [Distributor](#distributor)
 - [Options](#options)
@@ -159,6 +164,49 @@ console.log(second.value.toString()); // 'hello '
 Each `fork()` is an ordinary WHATWG `ReadableStream` of its own position.
 Use `getReader()`, `pipeTo()`, `for await`, or hand it to any API that
 takes a stream.
+
+## File medium
+
+On Node, writing a medium of your own is optional:
+`@produck/readable-stream-distributor-degraded-node-file` is that medium
+for the file system — framed records in a file the host names, read back
+by position, on bare `node:fs`, with no dependency beyond this framework
+and `@produck/type-error`.
+
+```sh
+npm install @produck/readable-stream-distributor-degraded-node-file
+```
+
+The host wires it with one class. Its reader names its own write side
+through the static slot, so a distributor subclass is the whole of it:
+
+```js
+import * as Core from '@produck/readable-stream-distributor';
+import { FileChunkReader } from '@produck/readable-stream-distributor-degraded-node-file';
+
+const { Distributor, Options, SYMBOL } = Core;
+const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
+
+class UploadDistributor extends Distributor {
+  static get [DEGRADED_CHUNK_READER_CTOR]() {
+    return FileChunkReader;
+  }
+}
+
+const distributor = new UploadDistributor(source);
+
+distributor.setTransferrerArgs('/var/tmp/upload.spool');
+Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+```
+
+- The pathname must be absolute, and it is the medium's only argument.
+- Nothing is written until the stash crosses `MaxStashByteLength`.
+- `destroy()` releases the medium: the handle is closed and the file the
+  medium created is removed.
+- Its own manual covers the record format and the two classes.
+
+A file is not the answer for every host: [The medium](#the-medium) below
+is the contract any other one has to honour.
 
 ## Examples
 
@@ -438,7 +486,8 @@ one per attempt while a budget lasts. Rate-limiting is the host's call.
 ## The medium
 
 The medium is yours. It only has to honour the two contracts below: what
-a failure means, and what a position is.
+a failure means, and what a position is. For Node, a working one is
+recommended in [File medium](#file-medium).
 
 **A failure means the attempt did not happen.** When one of the members
 below throws or rejects, the framework takes it as "no byte landed, the

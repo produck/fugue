@@ -33,6 +33,7 @@ Precedence clause of 00 itself — more specific repository rules win.
 - Markdown is measured in display columns (CJK counts as 2), not bytes.
 - The checker is `logs/check-md-width.mjs`; `logs/` is a probe directory and is
   not tracked.
-- Exception: `packages/degraded-node-file/README.md` keeps one over-width
-  line — the `Use` block's import, where the package name alone leaves no room
-  to wrap the statement. The manual shows it unbroken on purpose.
+- Exception: both package READMEs keep the sibling package's import as one
+  line. `@produck/readable-stream-distributor-degraded-node-file` is 55
+  columns on its own, so no statement that names it fits in 80; the manuals
+  show what a reader would copy.
