@@ -30,6 +30,7 @@
     "test": "npm run test --workspaces --if-present"
   },
   "workspaces": [
-    "packages/main"
+    "packages/main",
+    "packages/degraded-node-file"
   ]
 }

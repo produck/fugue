@@ -212,10 +212,13 @@ Promise"这一事实：
     与门解耦。分发器与读器都不接触 dump 的生命周期。
   - 【待定：`_I.DUMP` 返回的 Promise resolve 值（转存产物）的结构；
     实例侧 `_I.INITIALIZE` / `_I.READ` 具体签名】
-- **TemporaryFileChunkReader**（未来）：临时文件目录通过**配置方法 +
-  默认实现**提供，属子类职责，非分发器维护。它是
-  `AbstractDegradedChunkReader` 的 Node 文件系统实现；浏览器分支
-  （IndexedDB / OPFS）同挂其下。
+- **文件版已落地（2026-09-29）**：`FileChunkReader` / `FileTransferrer` 是
+  `AbstractDegradedChunkReader` 的 Node 文件系统实现，实现在兄弟包
+  `@produck/readable-stream-distributor-degraded-node-file`；文件路径通过
+  **配置方法**给出（`setTransferrerArgs(path)`，无默认），属子类职责，非
+  分发器维护。**TemporaryFileChunkReader**（临时文件版：`os.tmpdir()` 下
+  取名 + 释放即删）将来在文件版之上实现；浏览器分支（IndexedDB / OPFS）
+  同挂其下。
 - **动态替换降级 reader 类**：分发器提供"设置降级 ChunkReader 类"的
   方法，可动态替换存储降级阶段使用的 reader 子类（"降级策略读取器
   机制"）。

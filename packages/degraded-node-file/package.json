@@ -1,0 +1,41 @@
+{
+  "bugs": {
+    "url": "https://github.com/produck/node-readable-stream-distributor/issues"
+  },
+  "dependencies": {
+    "@produck/readable-stream-distributor": "^0.0.0"
+  },
+  "description": "The file degraded medium for @produck/readable-stream-distributor, on Node's file system.",
+  "exports": {
+    ".": {
+      "import": "./src/index.mjs",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "homepage": "https://github.com/produck/node-readable-stream-distributor/tree/main/packages/degraded-node-file#readme",
+  "imports": {
+    "#test/*": "./test/*"
+  },
+  "keywords": [
+    "readable-stream",
+    "distributor",
+    "degraded",
+    "spool",
+    "file",
+    "node"
+  ],
+  "license": "MIT",
+  "main": "./src/index.mjs",
+  "name": "@produck/readable-stream-distributor-degraded-node-file",
+  "repository": {
+    "directory": "packages/degraded-node-file",
+    "type": "git",
+    "url": "git+https://github.com/produck/node-readable-stream-distributor.git"
+  },
+  "scripts": {
+    "produck:coverage": "c8 --reporter=lcov --reporter=html --reporter=text-summary npm test",
+    "test": "node test/index.mjs"
+  },
+  "type": "module",
+  "version": "0.0.0"
+}

@@ -129,7 +129,9 @@ graph TD
 
 当前状态下所有 `class` 声明的结构与关系。`<<abstract>>` 表示该类经
 `@produck/es-abstract` 的 `Abstract()` 包装（抽象契约 + 子类校验）；
-`TemporaryFileChunkReader` 尚未实现。
+文件版 `FileChunkReader` / `FileTransferrer` 实现于兄弟包
+`@produck/readable-stream-distributor-degraded-node-file`（2026-09-29），
+`TemporaryFileChunkReader`（临时文件版）将来在它之上实现。
 
 ```mermaid
 classDiagram
@@ -297,7 +299,7 @@ Distributor/
     index.mjs
     _Symbol.mjs
     _External.mjs
-  TemporaryFile/        # （未来）TemporaryFileChunkReader（子类，与 DegradedChunkReader/ 平行）
+  TemporaryFile/        # （未落地）文件版实现于兄弟包；临时文件版将来在它之上，核心包不引 node: 依赖
     Concrete.mjs
     index.mjs
     _Symbol.mjs
@@ -408,7 +410,7 @@ interface ChunkReader {
 graph BT
     BufferChunkReader["BufferChunkReader<br/>直接读共享 ChunkStash"]
     AbstractDegradedChunkReader["AbstractDegradedChunkReader<br/>降级切换公共动作"]
-    TemporaryFileChunkReader["TemporaryFileChunkReader<br/>文件降级实现（未来）"]
+    TemporaryFileChunkReader["TemporaryFileChunkReader<br/>文件版已落地于兄弟包"]
     AbstractChunkReader["AbstractChunkReader<br/>生命周期/进度/初始化屏障"]
     BufferChunkReader --> AbstractChunkReader
     AbstractDegradedChunkReader --> AbstractChunkReader
@@ -458,9 +460,11 @@ graph BT
     越界/已落介质则 `undefined`）。实例是纯内部对象：不开公开观察面
     （调试看符号表），家族只经 `get dumping` 与 `$I` 原语交互。
   - 状态就是实例字段——1:1 之下无需再按 stash 键控。
-- `TemporaryFileChunkReader`（未来）是 `AbstractDegradedChunkReader` 的
-  Node 文件系统读实现，配套其 `TemporaryFileTransferrer` 提供写侧；
-  浏览器分支（IndexedDB / OPFS）同挂其下。
+- `FileChunkReader` 是 `AbstractDegradedChunkReader` 的 Node 文件系统读
+  实现，配套其 `FileTransferrer` 提供写侧；两者实现于兄弟包
+  `@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）。
+  临时文件版（`TemporaryFileChunkReader`：`os.tmpdir()` 下取名、释放即删）
+  将来在它之上实现；浏览器分支（IndexedDB / OPFS）同挂其下。
 
 ### 切换流程
 
@@ -630,8 +634,9 @@ sequenceDiagram
 - `DOMException`（`destroy()` 取消源时的原因，`name` 可辨识）
 - `Set` / `Map` / `Promise.withResolvers`（语言内建）
 
-将来实现真正的文件降级时才会用到 `node:fs`（打开/读写）与 `node:crypto`
-（临时文件名的随机段），且都应落在 Node 专属模块里，不进平台中立的基类。
+文件降级已实现于兄弟包：`node:fs`（打开/读写）与 `node:crypto`（临时文
+件名的随机段）落在那个包里，不进平台中立的基类——核心包保持零 `node:`
+导入。
 
 ## 终止信号
 
@@ -664,7 +669,12 @@ sequenceDiagram
 
 ### 临时文件清理
 
-临时文件清理策略继续搁置，实现时再定。
+文件版不删文件（2026-09-29）：`_I.DROP`（由 `destroy()` 触发）只关写句柄，
+文件留在宿主给的位置——路径由宿主指定，去留归宿主。在途的 dump 由宿主自查
+`get dropped` 收尾（`_I.DUMP` 开完句柄发现已被放开就关掉并退出，不落字节），
+所以“释放先到、dump 后到”不留半截数据。读器只关自己的读句柄（`_I.CLOSE`）。
+临时文件版（`os.tmpdir()` 下取名 + 释放即删）将来在文件版之上实现，那时
+清理策略归它。
 
 ## 已知风险与可观测性
 
