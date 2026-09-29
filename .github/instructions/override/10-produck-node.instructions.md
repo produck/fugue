@@ -16,8 +16,7 @@ Deltas against `.github/instructions/produck/10-produck-node.instructions.md`.
     observability).
   - `EXCEPTIONS.md`: the normative behaviour after an exception (failure
     domains, reporting surface, recovery ownership).
-  - `SWITCHING.md`, `BROWSER.md`: migration notes, open items and browser
-    environment.
+  - `SWITCHING.md`: migration notes and open items.
 - Documents are written in Chinese prose with English terms, headings `#`
   followed by a blockquote lead.
 

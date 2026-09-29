@@ -218,7 +218,7 @@ Promise"这一事实：
   （IndexedDB / OPFS）同挂其下。
 - **动态替换降级 reader 类**：分发器提供"设置降级 ChunkReader 类"的
   方法，可动态替换存储降级阶段使用的 reader 子类（"降级策略读取器
-  机制"，呼应 BROWSER.md 存储降级策略抽象）。
+  机制"）。
 
 ## 背景与目标
 

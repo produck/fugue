@@ -148,11 +148,22 @@
   规范语义**（`locked` 恒真、`cancel()` 关流并兑现在途读、errored 流对新读
   立即拒绝、reader 独占），“看起来像”的对象通过了才是坏消息——错误被推到
   运行期。判据**只出判词、不抛**：`instanceof` 对本地 Proxy（含 revoked）会
-  跑 `[[GetPrototypeOf]]` 陷阱，所以 `try` 留着，抛就判 `false`。跨 realm
-  （iframe / worker / 另一 `vm` 上下文）的流要先经适配层转成本地
-  `ReadableStream` 再传——“适配工具包”另开一个包，与核心包分工干净。
+  跑 `[[GetPrototypeOf]]` 陷阱，所以 `try` 留着，抛就判 `false`。
   实测口径：`logs/probe-checker-throw.mjs`（真流通过；鸭子型、revoked、
   抛异常的访问器都判否）。
+- **跨 realm 分享不需要适配层（2026-09-29 更正）**：`ReadableStream` 是
+  HTML 的 transferable，`postMessage(stream, [stream])` 之后接收 realm 拿
+  到的就是**它自己的** `ReadableStream`（反序列化落在目标 realm）：
+  `instanceof` 为真、直接可读。所以此前那句“跨 realm 的流要先经适配层
+  转成本地流、适配工具包另开一个包”作废——包不建（曾照它建过一个
+  端口协议版，按此结论删除）。判据真正挡下的是**直接引用**别的 realm
+  造出来的对象（`iframe.contentWindow.x`、`vm` 上下文、别的实现造的同形
+  对象）：那条路没有反序列化环节，`instanceof` 为假；把它变成本地流是
+  宿主的活，框架不管。
+  实测：`logs/probe-stream-transfer.mjs`（Node：列 transferList 可转移，
+  不列抛 `DataCloneError`）；`logs/probe-stream-transfer-realm.html`
+  （浏览器打开即测：Chromium 同源 `about:blank` iframe，两边构造器互异、
+  接收侧 `instanceof` 为真、读到 `[1,2,3]`）。
 - 共享 stash 由分发器 create/持有并注入各读取器；内容生命周期（`$I.PUSH()` /
   `$I.SET_DONE()`）归 `SourceConsumptionAgent`；dump→drop
   归写侧（`I.DUMP` 成功自己 DROP），内存相的 drop 归 `destroy()`。

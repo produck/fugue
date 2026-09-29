@@ -177,6 +177,11 @@ Abstract. Extends `EventTarget`.
 - Throws `TypeError` when `source` is not a stream of this realm.
 - Throws `Error` when `source` is already locked.
 
+A stream shared from another realm by `postMessage` transfer arrives as a
+stream of this realm, so it needs no adapting. An object another realm
+built and handed over by reference is not: wrap it in a local stream
+first.
+
 A locked source is a programming mistake, not a recoverable state: the
 distributor needs the only reader.
 

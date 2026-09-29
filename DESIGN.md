@@ -41,8 +41,9 @@
 
 构造条件：`source` 必须为**本 realm** 的、未被锁定的 WHATWG
 `ReadableStream`（`source instanceof ReadableStream` 且 `source.locked ===
-false`），否则拒绝构造。跨 realm（iframe / worker / 另一 `vm` 上下文）的流
-不直接接受：先经适配层转成本地 `ReadableStream` 再传入。
+false`），否则拒绝构造。跨 realm 分享过来的流（`postMessage` 转移）到达时
+已经是接收 realm 的 `ReadableStream`，直接可传；只有**直接引用**别 realm
+造出来的对象才过不了这条判据，那要宿主自己包一层（2026-09-29 更正）。
 
 ```js
 import { ReadableStreamDistributor } from '@produck/readable-stream-distributor';
@@ -502,8 +503,8 @@ stash 里且不会再涨，落介质只是白搬一趟），取“切”时切�
 
 ## 读写协调
 
-分发器不感知"落盘"——写入降级存储是**降级策略**的实现细节（呼应
-BROWSER.md：分发器不 embody 文件系统概念）。分发器不维护
+分发器不感知"落盘"——写入降级存储是**降级策略**的实现细节（分发器不
+embody 文件系统概念）。分发器不维护
 `committedChunks` 之类的落盘水位：水位由 transferrer 自持
 （`writtenChunkCount`），读侧经位置门取用，不回流到分发器。
 
