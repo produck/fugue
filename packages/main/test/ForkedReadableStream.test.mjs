@@ -294,7 +294,7 @@ describe('ForkedReadableStream', () => {
 
         assert.deepEqual(
           warns.map((warn) => warn.code),
-          ['degraded-reader-seek-failed', 'initialize-failed'],
+          ['degraded-reader-seek-failed'],
         );
         assert.equal(warns[0].payload.cause, cause);
       });

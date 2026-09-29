@@ -6,7 +6,6 @@ const I_DEGRADED_CHUNK_READER_CTOR = Symbol('.#degradedChunkReaderCtor');
 const I_CURRENT_CHUNK_READER_CTOR = Symbol('.#currentChunkReaderCtor');
 const I_TRANSFERRER_ARGS = Symbol('.#transferrerArgs');
 const I_TRANSFERRER_CTOR = Symbol('.#transferrerCtor');
-const I_INITIALIZE_READER = Symbol('.#initializeReader()');
 
 export const I = deepFreeze({
   CTOR: I_CTOR,
@@ -15,7 +14,6 @@ export const I = deepFreeze({
   CURRENT_CHUNK_READER_CTOR: I_CURRENT_CHUNK_READER_CTOR,
   TRANSFERRER_ARGS: I_TRANSFERRER_ARGS,
   TRANSFERRER_CTOR: I_TRANSFERRER_CTOR,
-  INITIALIZE_READER: I_INITIALIZE_READER,
 });
 
 const $I_SOURCE_CONSUMPTION_AGENT = Symbol('.$sourceConsumptionAgent');

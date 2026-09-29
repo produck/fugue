@@ -334,13 +334,13 @@
   每笔写 / 每个 fork 构造一次）。这条不是风格：`Tune` 之后"为什么不生效"
   只能靠它回答（`ForkHighWaterMark` 只管之后新建的拷贝）。刻度出处：
   `logs/measure-options.mjs` / `logs/measure-options2.mjs`。
-- **四个重试选项还没接线（2026-09-28）**：`MaxDumpRetryCount` /
-  `MaxDrainRetryCount` 默认都是 `Infinity`（无限重试），断言走
-  `NonNegativeIntegerOrInfinity`（`Infinity` 是唯一非整数合法值）；
-  `DumpRetryInterval` / `DrainRetryInterval` 是两次尝试之间的毫秒数，
-  断言 `NonNegativeInteger`，默认 **10**（个数默认无限，间隔就不能默认 0
-  ——否则死盘上是自旋）。两侧的重试循环还没落，所以读取时机那几行注释仍
-  写 TODO。
+- **六个重试选项（2026-09-29 收口）**：`MaxInitializeRetryCount` /
+  `MaxDumpRetryCount` / `MaxDrainRetryCount` 默认都是 `Infinity`（无限
+  重试），断言走 `NonNegativeIntegerOrInfinity`（`Infinity` 是唯一非整数
+  合法值）；三个 `*RetryInterval` 是两次尝试之间的毫秒数，断言
+  `NonNegativeInteger`，默认 `1 * SECOND`（个数默认无限，间隔就不能默认 0
+  ——否则死盘上是自旋）。三个重试循环都已落位，读取时机写在 `Items.mjs`
+  每项的头一行注释里。
 
 ### SourceConsumptionAgent（消费代理）
 
@@ -534,12 +534,22 @@
   由它取。
 - **请求初始化**：`$I.REQUEST_INITIALIZE(progress)` 同步播种位置，并把
   `I.INITIALIZED` 置为链体 `I.INITIALIZE`：等 `get dumping`（整份转移
-  落地）→ `_I.INITIALIZE` 打开介质 → `I.SYNC()` 进度同步（只能走到介质
-  当时能到的地方）。**失败就是链体 reject**（2026-09-25 定）：判据只留
-  一处。两个观测点：
-  链体自己 catch 到就派 `warn('initialize-failed', cause)` 再原样抛出
-  （2026-09-26 下移到读器：报告留在发生处）；需要介质的那一读在
+  落地）→ `_I.INITIALIZE` 打开介质（**可重试**，见下一条）→ `I.SYNC()`
+  进度同步（只能走到介质当时能到的地方）。**失败就是链体 reject**
+  （2026-09-25 定）：判据只留一处。两个观测点：重试层每次失败就派
+  `warn('degraded-reader-initialize-failed', { retry, cause })`
+  （2026-09-26 下移到读器：
+  报告留在发生处；2026-09-29 加重试）；需要介质的那一读在
   `I.READ_BACK` 的 `await this[I.INITIALIZED]` 上拿到同一个 cause。
+- **初始化可重试，且不再把整条链包进一个 try**（2026-09-29 定）：只有
+  `_I.INITIALIZE` 在 try 里——`await get dumping` 与 `I.SYNC()` 在外面，
+  于是同步失败不再被顺手报成 `degraded-reader-initialize-failed`（以前那两
+  种失败会各自再报一条聚合的 `degraded-reader-initialize-failed`，旧期望是
+  两条：`degraded-reader-seek-failed` 之后又一条初始化失败。重试的依据：
+  宿主 `_I.INITIALIZE` 没有复杂状态，创始不成功再来一遍不会带来危险的
+  副作用（与 dump / drain 同族，但**不是**"仍持有那份数据"那条判据，
+  而是"这一步本身可安全重放"）；用尽才原样抛出，收摊（`I.CLOSED`）
+  落下时立即收手。
   分发器的 `I.INITIALIZE_READER` 只剩“播种 + 吞”——播种是即发即弃，
   没人接的拒绝会变成未处理拒绝（只吃队列的读者照旧不受影响，它们根本
   不 await 这条链）。
@@ -865,7 +875,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `degraded` 仍 `false`，下一趟 pull 照旧重试切换（不锁死）。
 - **报告点跟着发生处**（2026-09-26）：降级读者的四个宿主模板成员在**调用
   现场**派事件，派发器就是分发器（读器构造时就拿到了它）：
-  `_I.INITIALIZE` → `initialize-failed` ·
+  `_I.INITIALIZE` → `degraded-reader-initialize-failed` ·
   `_I.SEEK` → `degraded-reader-seek-failed` ·
   `_I.READ` → `degraded-reader-read-failed` ·
   `_I.CLOSE` → `degraded-reader-close-failed`
@@ -885,11 +895,13 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   pull 里由 `$I.WRITE` 同步抛，同样原样）· `_I.DROP` →
   `transferrer-drop-failed` 后只报不抛（收摊面 fail-soft）。
 - **重复上报不去抖**：与 `transferrer-backlog` 同族——一个因（dump 被拒）可以让
-  每个降级 reader 各派一条 `initialize-failed`。水准信号，限频归宿主。
+  每个降级 reader 各派一条（重试则各派多条）
+  `degraded-reader-initialize-failed`。水准信号，限频归宿主。
 - **漏斗唯一**：所有内向失败统一从拷贝流的 `read()` 抛出并拒该拷贝（监听器
   抛不在此列，已实测）。
 - **谁持有那份数据，决定谁亲自重试**（2026-09-29 定）：框架只在「它仍持有
-  那份数据 + 失败发生在队尾」的操作上亲自重试——`_I.DUMP` 时字节在 stash
+  那份数据 + 失败发生在队尾」或「这一步本身无状态、可安全重放」的操作上
+  亲自重试（后者只有读器初始化）——`_I.DUMP` 时字节在 stash
   快照、`_I.WRITE` 时块还在 `PENDING_CHUNKS`，重试是**重放同一份数据**；
   用尽即封存，前缀照旧经 `PEEK` 交付（尾断而头不断 ⇒ 渐进降级）。
   `_I.SEEK` / `_I.READ` 不满足：块一写成功即卸货 ⇒ 介质是**唯一副本**，

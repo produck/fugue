@@ -156,6 +156,7 @@ it('should reject the read that needs the medium when the medium refused to open
   const reader = distributor.fork().getReader();
 
   Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Asset.noRetry(distributor);
 
   await assert.rejects(reader.read(), cause);
   assert.equal(distributor.degraded, true);

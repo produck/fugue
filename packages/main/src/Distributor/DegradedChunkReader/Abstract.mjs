@@ -4,6 +4,9 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 import * as ChunkReader from '../ChunkReader/index.mjs';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_External.mjs';
+import * as Options from '../Options/index.mjs';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AbstractDegradedChunkReader extends ChunkReader.Abstract {
   [I.CLOSED] = false;
@@ -11,9 +14,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
   [A.I.SEEKED_COUNT] = 0;
 
   get chunkStash() {
-    const distributor = this[PART.$I.DISTRIBUTOR];
-
-    return distributor[DISTRIBUTOR.A.$I.STASH];
+    return this[PART.$I.DISTRIBUTOR][DISTRIBUTOR.A.$I.STASH];
   }
 
   get closed() {
@@ -21,9 +22,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
   }
 
   get transferrer() {
-    const distributor = this[PART.$I.DISTRIBUTOR];
-
-    return distributor[DISTRIBUTOR.$I.TRANSFERRER];
+    return this[PART.$I.DISTRIBUTOR][DISTRIBUTOR.$I.TRANSFERRER];
   }
 
   [$I.REQUEST_INITIALIZE](progress) {
@@ -34,14 +33,42 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
   }
 
   async [I.INITIALIZE]() {
-    try {
-      await this.transferrer.dumping;
-      await this[_I.INITIALIZE]();
-      await this[I.SYNC]();
-    } catch (cause) {
-      this[PART.$I.WARN]('initialize-failed', cause);
-      Ow.throw(cause);
+    const distributor = this[PART.$I.DISTRIBUTOR];
+    const maxRetryCount = Options.Get.MaxInitializeRetryCount(distributor);
+    const retryInterval = Options.Get.InitializeRetryInterval(distributor);
+    const state = { retry: 0, cause: null };
+    let ok = false;
+
+    await this.transferrer.dumping;
+
+    while (!this[I.CLOSED]) {
+      try {
+        await this[_I.INITIALIZE]();
+        ok = true;
+
+        break;
+      } catch (cause) {
+        state.cause = cause;
+        this[PART.$I.WARN]('degraded-reader-initialize-failed', { ...state });
+
+        if (state.retry >= maxRetryCount) {
+          break;
+        }
+
+        state.retry++;
+        await sleep(retryInterval);
+      }
     }
+
+    if (this[I.CLOSED]) {
+      return;
+    }
+
+    if (!ok) {
+      Ow.throw(state.cause);
+    }
+
+    await this[I.SYNC]();
   }
 
   async [I.SYNC]() {

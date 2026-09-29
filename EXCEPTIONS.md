@@ -17,8 +17,8 @@
 
 - **抛不是违约**，而是"这次操作不能完成"的声明。框架不替下游解释失败的
   性质（暂时忙 vs 彻底坏），所以重试、缓冲、换落点这类"包庇"只能由下游
-  在成员内部完成（见第四节）；框架自身只在写侧亲自重试，判据见 §三
-  「其他说明」。
+  在成员内部完成（见第四节）；框架自身只在**写侧与初始化**上亲自
+  重试，判据见 §三「其他说明」。
 - 框架**不吞数据面的错**：它只承诺三件事——在发生处报告、让拒绝沿自然
   路径走到消费方、让已经拿到的数据照常交付。
 - **拷贝与源同形，且不做二次包装**：分发流与源流给出一致的 chunk 序列与
@@ -48,10 +48,10 @@
 - **\[L3\] 闩错级**：共享的写侧实例闩错、不可逆；此后只剩已经捕获的前缀。
 - **\[L4\] 分发器级**：全部拷贝一起——源坏之后，要新数据的读都拒。
 - **后处理**：**\[L1\] 一律“无”**——只观测；资源层面的未了账（源侧
-  清理没跑完、介质句柄没放开、内存涨上去）归宿主自己记账。其余各条的
-  「后处理」除 `initialize-failed` 外已定下，口径是同一句：**不重试、
-  不闩、出局**，恢复归宿主在自己的成员内部自吞（§一、§四）；
-  `initialize-failed` 仍标 `TODO`。
+  清理没跑完、介质句柄没放开、内存涨上去）归宿主自己记账。其余各条已
+  全部定下，口径分两种：**可重放者重试到预算用尽**（dump / drain /
+  initialize），**不可重放者立刻抛出、不闩、出局**（seek / read / close）。
+  恢复统一归宿主在自己的成员内部自吞（§一、§四）。
 
 ### 所有异常点
 
@@ -84,15 +84,23 @@
   - 后处理：无（只观测；内存代价归宿主——限频 / 扩容 / 重建都是宿主的决定）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
     `should dispatch warn(transferrer-backlog) once over the limit`。
-- **\[L2\]** · **`initialize-failed`**（宿主 `_I.INITIALIZE` 拒）
-  - 观测：`initialize-failed`，每个降级读器一条。
+- **\[L2\]** · **`degraded-reader-initialize-failed`**（宿主
+  `_I.INITIALIZE` 拒；可重试，用尽才出局）
+  - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起；
+    每个降级读器各派）。
   - 失败域：该读器，**从第一个需要介质的位置起**出局（在那之前队列交付
-    的读不受影响）。
-  - 后处理：TODO（待逐条讨论）。
+    的读不受影响）；未用尽不闩。
+  - 后处理：按 `InitializeRetryInterval` 重试到 `MaxInitializeRetryCount`
+    （重试期间该读器的读一直 pending，队列交付的读照旧）；用尽则原样
+    抛出；收摊（`I.CLOSED`）落下时立即收手。恢复归宿主——它自己的初始化
+    没成功，只有它能判断能不能再来一遍。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
-    `should dispatch warn(initialize-failed) on the switch`；
+    `should dispatch warn(degraded-reader-initialize-failed) on the switch`、
+    `should dispatch warn(degraded-reader-initialize-failed) once per attempt`、
+    `should land the initialize when the medium answers the retry`、
+    `should stop retrying the initialize once the reader is released`；
     `Distributor/fork.test.mjs` ›
-    `should dispatch warn(initialize-failed) after the switch`；
+    `should dispatch warn(degraded-reader-initialize-failed) after the switch`；
     `Distributor/degraded/phase.test.mjs` ›
     `should reject the read that needs the medium when the medium
 refused to open`。
@@ -114,7 +122,7 @@ refused to open`。
     `should dispatch warn(degraded-reader-read-failed) on a failed read`。
 - **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒；可重试，
   用尽才闩）
-  - 观测：每次尝试一条，载荷 `{ cause, retry }`（`retry` 从 0 起，每条
+  - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
     事件是独立快照）。
   - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
   - 后处理：按 `DumpRetryInterval` 重试到 `MaxDumpRetryCount`；期间不闩
@@ -130,7 +138,7 @@ refused to open`。
     `should keep the chunks a failed dump left undrained`。
 - **\[L3\]** · **`transferrer-write-failed`**（宿主 `_I.WRITE` 拒；可重试，
   用尽才闩）
-  - 观测：每次尝试一条，载荷 `{ cause, retry }`（`retry` 从 0 起，每条
+  - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
     事件是独立快照）。
   - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
   - 后处理：每块由 `I.DRAIN_HEAD` 按 `DrainRetryInterval` 重试到
@@ -186,6 +194,12 @@ refused to open`。
   游标没动）。dump / drain 的两次重试立在这条上；违约的代价是介质侧错位
   或残迹，**框架检测不到**。能自证"位置无关"的宿主，就该在自己的成员
   内部吞掉重来。
+- **回退只在下游自己的成员内部**（2026-09-29 定）：`_I.INITIALIZE` 抛出即
+  "没发生"，半开状态（句柄 / 映射 / 临时文件）由下游在自己的成员里用
+  `try` / `finally` 就近收干净；框架**不**赋予 `_I.CLOSE` "清理半开
+  初始化"的语义——它的含义只有一个：关闭这个读器。但要注意：拷贝出局时
+  `_CLOSE` 仍会被调到（初始化失败的拷贝也会出局），所以回退必须就地做完，
+  不能留到 `_CLOSE` 去猜。
 
 ## 四、恢复归属
 
@@ -207,19 +221,19 @@ refused to open`。
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
 - **10 个 code**：`degraded-reader-close-failed` /
+  `degraded-reader-initialize-failed` /
   `degraded-reader-read-failed` / `degraded-reader-seek-failed` /
-  `initialize-failed` / `source-cancel-failed` /
-  `source-read-failed` / `transferrer-backlog` /
-  `transferrer-dump-failed` / `transferrer-drop-failed` /
-  `transferrer-write-failed`。
+  `source-cancel-failed` / `source-read-failed` /
+  `transferrer-backlog` / `transferrer-dump-failed` /
+  `transferrer-drop-failed` / `transferrer-write-failed`。
 - **命名约定**：**发生处前缀**——源读取器自己发生的失败带 `source-`
   （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的信号
   带 `transferrer-`（现在四个：`transferrer-backlog`、
   `transferrer-dump-failed`、`transferrer-drop-failed` /
   `transferrer-write-failed`）；降级读器自己发生的信号带
-  `degraded-reader-`（现在三个：`degraded-reader-close-failed`、
+  `degraded-reader-`（现在四个：`degraded-reader-close-failed`、
+  `degraded-reader-initialize-failed`、
   `degraded-reader-read-failed` / `degraded-reader-seek-failed`）。
-  `initialize-failed` 尚未定前缀。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 

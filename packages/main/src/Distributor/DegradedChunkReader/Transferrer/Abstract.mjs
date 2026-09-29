@@ -40,10 +40,7 @@ class AbstractTransferrer extends Part.Abstract {
     }
 
     const total = this[A.I.WRITTEN_COUNT] + this[I.PENDING_CHUNKS].length;
-    const isTerminal =
-      this[I.DONE] ||
-      this[I.DUMPING_ERROR] !== null ||
-      this[I.DRAINING_ERROR] !== null;
+    const isTerminal = this[I.DONE] || this[I.ERROR] !== null;
 
     for (const [release, position] of waitingPositions) {
       if (position < total || isTerminal) {
@@ -57,12 +54,13 @@ class AbstractTransferrer extends Part.Abstract {
     const distributor = this[PART.$I.DISTRIBUTOR];
     const maxRetryCount = Options.Get.MaxDumpRetryCount(distributor);
     const retryInterval = Options.Get.DumpRetryInterval(distributor);
-    const state = { retry: 0, cause: null, ok: false };
+    const state = { retry: 0, cause: null };
+    let ok = false;
 
     while (!this[I.DROPPED]) {
       try {
         await this[_I.DUMP](stash);
-        state.ok = true;
+        ok = true;
 
         break;
       } catch (cause) {
@@ -82,7 +80,7 @@ class AbstractTransferrer extends Part.Abstract {
       return void stash[_A.STASH.$I.DROP]();
     }
 
-    if (state.ok) {
+    if (ok) {
       const { length } = stash;
 
       stash[_A.STASH.$I.DROP]();
@@ -104,12 +102,11 @@ class AbstractTransferrer extends Part.Abstract {
     const distributor = this[PART.$I.DISTRIBUTOR];
     const maxRetryCount = Options.Get.MaxDrainRetryCount(distributor);
     const retryInterval = Options.Get.DrainRetryInterval(distributor);
-    const state = { retry: 0, cause: null, ok: false };
+    const state = { retry: 0, cause: null };
 
     while (!this[I.DROPPED]) {
       try {
         await this[_I.WRITE](buffer);
-        state.ok = true;
 
         return true;
       } catch (cause) {
@@ -170,7 +167,6 @@ class AbstractTransferrer extends Part.Abstract {
   }
 
   [$I.WRITE](chunk) {
-    const distributor = this[PART.$I.DISTRIBUTOR];
     const error = this[I.ERROR];
 
     if (error !== null) {
@@ -185,6 +181,7 @@ class AbstractTransferrer extends Part.Abstract {
       this[I.DRAINING] = this[I.DRAIN]();
     }
 
+    const distributor = this[PART.$I.DISTRIBUTOR];
     const warningLength = Options.Get.MaxBacklogWarningByteLength(distributor);
 
     if (this[I.PENDING_BYTE_LENGTH] > warningLength) {

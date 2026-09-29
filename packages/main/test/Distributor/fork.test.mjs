@@ -73,7 +73,7 @@ describe('.fork()', () => {
     assert.deepEqual(forked, [copy]);
   });
 
-  it('should dispatch warn(initialize-failed) after the switch', async () => {
+  it('should dispatch warn(degraded-reader-initialize-failed) after the switch', async () => {
     const cause = new Error('the medium refused to open');
 
     class RefusingInitializeReader extends TestDegradedChunkReader {
@@ -89,6 +89,7 @@ describe('.fork()', () => {
     distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
     Options.Tune.MaxStashByteLength(distributor, 0);
+    Options.Asset.noRetry(distributor);
 
     await assert.rejects(distributor.fork().getReader().read(), cause);
     await settle();
@@ -99,7 +100,7 @@ describe('.fork()', () => {
     await settle();
 
     assert.equal(warns.length, atSwitch + 1);
-    assert.equal(warns.at(-1).code, 'initialize-failed');
-    assert.equal(warns.at(-1).payload, cause);
+    assert.equal(warns.at(-1).code, 'degraded-reader-initialize-failed');
+    assert.equal(warns.at(-1).payload.cause, cause);
   });
 });

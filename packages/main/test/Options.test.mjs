@@ -450,7 +450,14 @@ describe('Options', () => {
     it('should answer the retry counts of one side', () => {
       const distributor = makeDistributor();
 
+      Asset.noInitializeRetry(distributor);
+      assert.equal(Get.MaxInitializeRetryCount(distributor), 0);
+
+      Asset.unlimitedInitializeRetry(distributor);
+      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
+
       Asset.noDumpRetry(distributor);
+      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
       assert.equal(Get.MaxDumpRetryCount(distributor), 0);
       assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
 
@@ -469,10 +476,12 @@ describe('Options', () => {
       const distributor = makeDistributor();
 
       Asset.noRetry(distributor);
+      assert.equal(Get.MaxInitializeRetryCount(distributor), 0);
       assert.equal(Get.MaxDumpRetryCount(distributor), 0);
       assert.equal(Get.MaxDrainRetryCount(distributor), 0);
 
       Asset.unlimitedRetry(distributor);
+      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
       assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
       assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
     });

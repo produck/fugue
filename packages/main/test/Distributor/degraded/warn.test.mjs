@@ -147,7 +147,7 @@ it('should dispatch warn(transferrer-backlog) once over the limit', async () => 
   assert.equal(warns[0].payload.byteLength, 5);
 });
 
-it('should dispatch warn(initialize-failed) on the switch', async () => {
+it('should dispatch warn(degraded-reader-initialize-failed) on the switch', async () => {
   const cause = new Error('the medium refused to open');
 
   class RefusingInitializeReader extends TestDegradedChunkReader {
@@ -164,11 +164,119 @@ it('should dispatch warn(initialize-failed) on the switch', async () => {
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
   Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Asset.noRetry(distributor);
 
   await assert.rejects(reader.read(), cause);
   await settle();
 
   assert.equal(warns.length, 1);
-  assert.equal(warns[0].code, 'initialize-failed');
-  assert.equal(warns[0].payload, cause);
+  assert.equal(warns[0].code, 'degraded-reader-initialize-failed');
+  assert.equal(warns[0].payload.cause, cause);
+  assert.equal(warns[0].payload.retry, 0);
+});
+
+it('should dispatch warn(degraded-reader-initialize-failed) once per attempt', async () => {
+  const cause = new Error('the medium refuses to open');
+  let calls = 0;
+
+  class FailingInitializeReader extends TestDegradedChunkReader {
+    [READER.INITIALIZE]() {
+      calls += 1;
+
+      throw cause;
+    }
+  }
+
+  const family = makeFamily({ reader: FailingInitializeReader });
+  const distributor = new family.Distributor(makeSource(['a']));
+  const reading = distributor.fork().getReader();
+  const warns = [];
+
+  distributor.addEventListener('warn', (event) => warns.push(event.detail));
+
+  Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Tune.MaxInitializeRetryCount(distributor, 1);
+  Options.Tune.InitializeRetryInterval(distributor, 0);
+
+  await assert.rejects(reading.read(), cause);
+
+  const attempts = warns.filter(
+    (warn) => warn.code === 'degraded-reader-initialize-failed',
+  );
+
+  assert.equal(calls, 2);
+  assert.equal(attempts.length, 2);
+  assert.equal(attempts[0].payload.cause, cause);
+  assert.equal(attempts[1].payload.cause, cause);
+  assert.equal(attempts[0].payload.retry, 0);
+  assert.equal(attempts[1].payload.retry, 1);
+});
+
+it('should land the initialize when the medium answers the retry', async () => {
+  let calls = 0;
+
+  class HiccupInitializeReader extends TestDegradedChunkReader {
+    [READER.INITIALIZE]() {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error('a hiccup');
+      }
+    }
+  }
+
+  const family = makeFamily({ reader: HiccupInitializeReader });
+  const distributor = new family.Distributor(makeSource(['a']));
+  const reading = distributor.fork().getReader();
+  const warns = [];
+
+  distributor.addEventListener('warn', (event) => warns.push(event.detail));
+
+  Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Tune.MaxInitializeRetryCount(distributor, 1);
+  Options.Tune.InitializeRetryInterval(distributor, 0);
+
+  assert.equal((await reading.read()).value.toString(), 'a');
+  assert.equal(calls, 2);
+  assert.equal(warns.length, 1);
+  assert.equal(warns[0].payload.retry, 0);
+});
+
+it('should stop retrying the initialize once the reader is released', async () => {
+  const cause = new Error('the medium never answers');
+  let calls = 0;
+  let release = null;
+
+  const started = new Promise((resolve) => {
+    release = resolve;
+  });
+
+  class FailingInitializeReader extends TestDegradedChunkReader {
+    [READER.INITIALIZE]() {
+      calls += 1;
+      release();
+
+      throw cause;
+    }
+  }
+
+  const family = makeFamily({ reader: FailingInitializeReader });
+  const distributor = new family.Distributor(makeSource(['a']));
+  const reading = distributor.fork().getReader();
+
+  reading.read().catch(() => {});
+
+  Options.Tune.MaxStashByteLength(distributor, 0);
+  Options.Tune.MaxInitializeRetryCount(distributor, Infinity);
+  Options.Tune.InitializeRetryInterval(distributor, 100);
+
+  await started;
+  await distributor.destroy();
+
+  const atRelease = calls;
+  const window = Options.Get.InitializeRetryInterval(distributor) * 1.5;
+
+  await new Promise((resolve) => setTimeout(resolve, window));
+
+  assert.equal(calls, atRelease);
 });

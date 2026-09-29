@@ -137,23 +137,21 @@ export declare namespace Event {
     cause: unknown;
   }
 
-  export interface RetryPayload {
+  export interface RetryPayload extends CausePayload {
     retry: number;
-    cause: unknown;
-    ok: boolean;
   }
 
   export interface WarnPayloadMap {
-    'degraded-reader-close-failed': CausePayload;
-    'degraded-reader-read-failed': CausePayload;
+    'degraded-reader-initialize-failed': RetryPayload;
     'degraded-reader-seek-failed': CausePayload;
-    'initialize-failed': unknown;
+    'degraded-reader-read-failed': CausePayload;
+    'degraded-reader-close-failed': CausePayload;
     'source-cancel-failed': CausePayload;
     'source-read-failed': CausePayload;
-    'transferrer-backlog': { byteLength: number };
-    'transferrer-drop-failed': CausePayload;
     'transferrer-dump-failed': RetryPayload;
     'transferrer-write-failed': RetryPayload;
+    'transferrer-backlog': { byteLength: number };
+    'transferrer-drop-failed': CausePayload;
   }
 
   export type WarnCode = keyof WarnPayloadMap;
@@ -186,6 +184,8 @@ type OptionDefinitions = {
   MaxBacklogWarningByteLength: number;
   DegradeOnStashFullAndDone: boolean;
   ForkHighWaterMark: number;
+  MaxInitializeRetryCount: number;
+  InitializeRetryInterval: number;
   MaxDumpRetryCount: number;
   MaxDrainRetryCount: number;
   DumpRetryInterval: number;
@@ -224,8 +224,10 @@ export declare namespace Options {
   const Get: Readonly<Get>;
 
   type AssetName =
+    | 'noInitializeRetry'
     | 'noDumpRetry'
     | 'noDrainRetry'
+    | 'unlimitedInitializeRetry'
     | 'unlimitedDumpRetry'
     | 'unlimitedDrainRetry'
     | 'noRetry'

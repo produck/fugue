@@ -19,6 +19,10 @@ const noop = () => {};
 
 const TERMINATION_MESSAGE = 'The distributor has been terminated';
 
+async function initializeReader(reader, progress) {
+  await reader[_A.DEGRADED.$I.REQUEST_INITIALIZE](progress).catch(noop);
+}
+
 class ReadableStreamDistributor extends EventTarget {
   [A.$I.STASH] = new ChunkStash.Concrete();
   [A.$I.REGISTRY] = new ForkedReadableStreamRegistry();
@@ -54,10 +58,6 @@ class ReadableStreamDistributor extends EventTarget {
     return this[$I.TERMINATION] !== null;
   }
 
-  async [I.INITIALIZE_READER](reader, progress) {
-    await reader[_A.DEGRADED.$I.REQUEST_INITIALIZE](progress).catch(noop);
-  }
-
   [$I.WARN](code, payload) {
     this.dispatchEvent(new Event.Warn(code, payload));
   }
@@ -71,7 +71,7 @@ class ReadableStreamDistributor extends EventTarget {
     const reader = new ChunkReaderImpl(this);
 
     if (ChunkReaderImpl === this[A.I.CTOR.READER.DEGRADED]) {
-      this[I.INITIALIZE_READER](reader, 0);
+      initializeReader(reader, 0);
     }
 
     const forked = new ForkedReadableStream.Concrete(this, reader);
@@ -106,7 +106,7 @@ class ReadableStreamDistributor extends EventTarget {
       const bufferChunkReader = forked[_A.FORKED.A.$I.READER];
       const progress = bufferChunkReader[_A.READER.A.$I.CONSUMED_COUNT];
 
-      this[I.INITIALIZE_READER](reader, progress);
+      initializeReader(reader, progress);
       bufferChunkReader[_A.BUFFER.$I.HANDOVER](reader);
       forked[_A.FORKED.$I.SET_DEGRADED_CHUNK_READER](reader);
     }

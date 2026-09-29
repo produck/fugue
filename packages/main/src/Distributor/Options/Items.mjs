@@ -28,6 +28,18 @@ const items = [
     assert: Assert.HighWaterMark,
   },
   {
+    // Read once at the start of every reader initialize, by its retry loop.
+    name: 'MaxInitializeRetryCount',
+    defaultValue: Infinity,
+    assert: Assert.NonNegativeIntegerOrInfinity,
+  },
+  {
+    // Read once at the start of every reader initialize, with the count.
+    name: 'InitializeRetryInterval',
+    defaultValue: 1 * SECOND,
+    assert: Assert.NonNegativeInteger,
+  },
+  {
     // Read once at the start of every dump, by its retry loop.
     name: 'MaxDumpRetryCount',
     defaultValue: Infinity,

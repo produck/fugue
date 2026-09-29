@@ -14,9 +14,11 @@ describe('.options', () => {
       'DrainRetryInterval',
       'DumpRetryInterval',
       'ForkHighWaterMark',
+      'InitializeRetryInterval',
       'MaxBacklogWarningByteLength',
       'MaxDrainRetryCount',
       'MaxDumpRetryCount',
+      'MaxInitializeRetryCount',
       'MaxStashByteLength',
     ];
 
