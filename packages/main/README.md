@@ -15,6 +15,7 @@ backpressure, retries and reporting.
 - [How it works](#how-it-works)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [Examples](#examples)
 - [Distributor](#distributor)
 - [Options](#options)
 - [Events](#events)
@@ -158,6 +159,12 @@ console.log(second.value.toString()); // 'hello '
 Each `fork()` is an ordinary WHATWG `ReadableStream` of its own position.
 Use `getReader()`, `pipeTo()`, `for await`, or hand it to any API that
 takes a stream.
+
+## Examples
+
+More scenarios live one per file under [`test/Example`](test/Example/),
+each of them a runnable test: the quick start above, and an HTTP upload
+that spools to a file while the digest is computed.
 
 ## Distributor
 
