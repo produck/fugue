@@ -2,14 +2,12 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { SYMBOL } from '@produck/readable-stream-distributor';
+import * as Core from '@produck/readable-stream-distributor';
 
-import {
-  Distributor,
-  FileChunkReader,
-  FileTransferrer,
-} from '@produck/readable-stream-distributor-degraded-node-file';
+import * as NodeFile from '@produck/readable-stream-distributor-degraded-node-file';
 
+const { Distributor, SYMBOL } = Core;
+const { FileChunkReader, FileTransferrer } = NodeFile;
 const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
 const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
 const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
@@ -67,9 +65,11 @@ export const makeFamily = (bases = {}) => {
     }
   }
 
-  class Reader extends ReaderBase {}
-
-  Reader[READER_S.TRANSFERRER_CTOR] = Medium;
+  class Reader extends ReaderBase {
+    static get [READER_S.TRANSFERRER_CTOR]() {
+      return Medium;
+    }
+  }
 
   class FamilyDistributor extends Distributor {}
 

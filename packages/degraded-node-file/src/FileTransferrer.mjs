@@ -1,77 +1,72 @@
-import { open } from 'node:fs/promises';
+import * as fs from 'node:fs';
 
-import { SYMBOL, Transferrer } from '@produck/readable-stream-distributor';
+import * as Distributor from '@produck/readable-stream-distributor';
 
-const { _I, _S } = SYMBOL.TRANSFERRER;
+import * as Frame from './Frame.mjs';
+import * as Parser from './Parser.mjs';
 
-const FRAME_HEADER = 4;
-
-const validated = (path) => {
-  if (typeof path !== 'string') {
-    throw new TypeError('Invalid "path", one "String" expected.');
-  }
-
-  return path;
-};
+const { SYMBOL, Transferrer } = Distributor;
+const I_CLOSE = Symbol('.#close()');
+const REMOVE_OPTIONS = { force: true, maxRetries: 5, retryDelay: 50 };
 
 const frameOf = (chunk) => {
-  const header = Buffer.alloc(FRAME_HEADER);
+  const header = Buffer.alloc(Frame.HEADER_LENGTH);
 
   header.writeUInt32BE(chunk.byteLength);
 
   return Buffer.concat([header, chunk]);
 };
 
-const close = async (medium) => {
-  await medium.handle?.close();
-  medium.handle = null;
-};
-
 export class FileTransferrer extends Transferrer {
   handle = null;
-  spooledByteLength = 0;
+  writtenByteLength = 0;
 
-  static [_S.PARSE_ARGUMENTS](args) {
-    const [path] = args;
-
-    return [validated(path)];
+  static [SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args) {
+    return [Parser.absolutePathname(args[0], 'args[0] as pathname')];
   }
 
-  constructor(path) {
+  constructor(pathname) {
     super();
-
-    this.path = validated(path);
+    this.pathname = Parser.absolutePathname(pathname, 'args[0] as pathname');
   }
 
-  async [_I.DUMP](stash) {
+  async [SYMBOL.TRANSFERRER._I.DUMP](stash) {
     const buffer = Buffer.concat([...stash.chunks()].map(frameOf));
 
-    this.handle ??= await open(this.path, 'w');
+    if (this.handle === null) {
+      this.handle = await fs.promises.open(this.pathname, 'w');
+    }
 
     if (this.dropped) {
-      await close(this);
-
-      return;
+      return void (await this[I_CLOSE]());
     }
 
     await this.handle.write(buffer, 0, buffer.byteLength, 0);
-    this.spooledByteLength = buffer.byteLength;
+    this.writtenByteLength = buffer.byteLength;
   }
 
-  async [_I.WRITE](chunk) {
+  async [SYMBOL.TRANSFERRER._I.WRITE](chunk) {
     const buffer = frameOf(chunk);
+    const length = buffer.byteLength;
+    const position = this.writtenByteLength;
 
-    await this.handle.write(
-      buffer,
-      0,
-      buffer.byteLength,
-      this.spooledByteLength,
-    );
-
-    this.spooledByteLength += buffer.byteLength;
+    await this.handle.write(buffer, 0, length, position);
+    this.writtenByteLength += buffer.byteLength;
   }
 
-  async [_I.DROP]() {
-    await close(this);
+  async [SYMBOL.TRANSFERRER._I.DROP]() {
+    await this[I_CLOSE]();
+  }
+
+  async [I_CLOSE]() {
+    const handle = this.handle;
+
+    this.handle = null;
+
+    if (handle !== null) {
+      await handle.close();
+    }
+
+    await fs.promises.rm(this.pathname, REMOVE_OPTIONS);
   }
 }

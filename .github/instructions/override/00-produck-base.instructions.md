@@ -33,3 +33,6 @@ Precedence clause of 00 itself — more specific repository rules win.
 - Markdown is measured in display columns (CJK counts as 2), not bytes.
 - The checker is `logs/check-md-width.mjs`; `logs/` is a probe directory and is
   not tracked.
+- Exception: `packages/degraded-node-file/README.md` keeps one over-width
+  line — the `Use` block's import, where the package name alone leaves no room
+  to wrap the statement. The manual shows it unbroken on purpose.

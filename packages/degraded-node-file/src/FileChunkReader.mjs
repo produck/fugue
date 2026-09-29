@@ -1,31 +1,22 @@
-import { open } from 'node:fs/promises';
+import * as fs from 'node:fs';
 
-import {
-  DegradedChunkReader,
-  SYMBOL,
-} from '@produck/readable-stream-distributor';
+import * as Distributor from '@produck/readable-stream-distributor';
 
 import { FileTransferrer } from './FileTransferrer.mjs';
+import * as Frame from './Frame.mjs';
 
-const { _I, _S } = SYMBOL.DEGRADED_CHUNK_READER;
-
-const FRAME_HEADER = 4;
-
-const readFrameHeader = async (handle, position) => {
-  const header = Buffer.alloc(FRAME_HEADER);
-  const { bytesRead } = await handle.read(header, 0, FRAME_HEADER, position);
-
-  return bytesRead < FRAME_HEADER ? null : header.readUInt32BE(0);
-};
+const { DegradedChunkReader, SYMBOL } = Distributor;
 
 export class FileChunkReader extends DegradedChunkReader {
-  static [_S.TRANSFERRER_CTOR] = FileTransferrer;
+  static get [SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]() {
+    return FileTransferrer;
+  }
 
   handle = null;
   cursor = 0;
 
-  async [_I.INITIALIZE]() {
-    const handle = await open(this.transferrer.path, 'r');
+  async [SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]() {
+    const handle = await fs.promises.open(this.transferrer.pathname, 'r');
 
     // The driver stops retrying once the reader is closed, so an open lands on
     //   a closed reader only when the close arrived while this open was in
@@ -39,8 +30,8 @@ export class FileChunkReader extends DegradedChunkReader {
     this.handle = handle;
   }
 
-  async [_I.SEEK]() {
-    const byteLength = await readFrameHeader(this.handle, this.cursor);
+  async [SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]() {
+    const byteLength = await Frame.readHeader(this.handle, this.cursor);
 
     // The position gate admits a read back only below the watermark, so the
     //   cursor never stands past the last record here; the answer stays for
@@ -50,28 +41,34 @@ export class FileChunkReader extends DegradedChunkReader {
       return false;
     }
 
-    this.cursor += FRAME_HEADER + byteLength;
+    this.cursor += Frame.HEADER_LENGTH + byteLength;
 
     return true;
   }
 
-  async [_I.READ]() {
-    const byteLength = await readFrameHeader(this.handle, this.cursor);
+  async [SYMBOL.DEGRADED_CHUNK_READER._I.READ]() {
+    const byteLength = await Frame.readHeader(this.handle, this.cursor);
+    const result = { done: false, value: undefined };
 
     if (byteLength === null) {
-      return { done: true, value: undefined };
+      result.done = true;
+    } else {
+      const position = this.cursor + Frame.HEADER_LENGTH;
+      const value = Buffer.alloc(byteLength);
+
+      result.value = value;
+      await this.handle.read(value, 0, byteLength, position);
+      this.cursor += Frame.HEADER_LENGTH + byteLength;
     }
 
-    const value = Buffer.alloc(byteLength);
-
-    await this.handle.read(value, 0, byteLength, this.cursor + FRAME_HEADER);
-    this.cursor += FRAME_HEADER + byteLength;
-
-    return { done: false, value };
+    return result;
   }
 
-  async [_I.CLOSE]() {
-    await this.handle?.close();
+  async [SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]() {
+    if (this.handle !== null) {
+      await this.handle.close();
+    }
+
     this.handle = null;
   }
 }

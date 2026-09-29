@@ -37,7 +37,7 @@
 - 新 `fork()` 的读器取自当前相位字段 `I.CURRENT_CHUNK_READER_CTOR`（初值
   内存类，降级换读器时翻成上面那个策略类）
 
-（临时文件目录等存储要素不属分发器职责，由降级策略/子类自管。）
+（文件路径等存储要素不属分发器职责，由降级策略/子类自管。）
 
 构造条件：`source` 必须为**本 realm** 的、未被锁定的 WHATWG
 `ReadableStream`（`source instanceof ReadableStream` 且 `source.locked ===
@@ -130,8 +130,7 @@ graph TD
 当前状态下所有 `class` 声明的结构与关系。`<<abstract>>` 表示该类经
 `@produck/es-abstract` 的 `Abstract()` 包装（抽象契约 + 子类校验）；
 文件版 `FileChunkReader` / `FileTransferrer` 实现于兄弟包
-`@produck/readable-stream-distributor-degraded-node-file`（2026-09-29），
-`TemporaryFileChunkReader`（临时文件版）将来在它之上实现。
+`@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）。
 
 ```mermaid
 classDiagram
@@ -204,8 +203,8 @@ classDiagram
         +dropped
     }
 
-    class TemporaryFileChunkReader {
-        <<planned>>
+    class FileChunkReader {
+        <<sibling package>>
     }
 
     EventTarget <|-- ReadableStreamDistributor
@@ -216,7 +215,7 @@ classDiagram
     AbstractPart <|-- AbstractTransferrer
     AbstractChunkReader <|-- BufferChunkReader
     AbstractChunkReader <|-- AbstractDegradedChunkReader
-    AbstractDegradedChunkReader <|-- TemporaryFileChunkReader
+    AbstractDegradedChunkReader <|-- FileChunkReader
 
     ReadableStreamDistributor *-- ChunkStash : CHUNK_STASH
     ReadableStreamDistributor *-- SourceReader : SOURCE_READER
@@ -232,7 +231,7 @@ classDiagram
     AbstractChunkReader ..> ChunkStash : 共享 chunkStash
     ReadableStreamDistributor "1" o-- "0..1" AbstractTransferrer : 降级时构造
     AbstractDegradedChunkReader ..> AbstractTransferrer : 家族静态声明写侧类
-    TemporaryFileChunkReader ..> AbstractTransferrer : 同策略配套写侧
+    FileChunkReader ..> AbstractTransferrer : 同策略配套写侧
     SourceReader ..> ReadableStream : 包住 source reader
 ```
 
@@ -299,10 +298,6 @@ Distributor/
     index.mjs
     _Symbol.mjs
     _External.mjs
-  TemporaryFile/        # （未落地）文件版实现于兄弟包；临时文件版将来在它之上，核心包不引 node: 依赖
-    Concrete.mjs
-    index.mjs
-    _Symbol.mjs
   ChunkStash/           # 内部类（向下扩展）
   ForkedReadableStream/ # 内部类（向下扩展）
   SourceConsumptionAgent.mjs # 单文件特例：无子类、无专属符号、无独立导出
@@ -410,11 +405,11 @@ interface ChunkReader {
 graph BT
     BufferChunkReader["BufferChunkReader<br/>直接读共享 ChunkStash"]
     AbstractDegradedChunkReader["AbstractDegradedChunkReader<br/>降级切换公共动作"]
-    TemporaryFileChunkReader["TemporaryFileChunkReader<br/>文件版已落地于兄弟包"]
+    FileChunkReader["FileChunkReader<br/>文件版，落地于兄弟包"]
     AbstractChunkReader["AbstractChunkReader<br/>生命周期/进度/初始化屏障"]
     BufferChunkReader --> AbstractChunkReader
     AbstractDegradedChunkReader --> AbstractChunkReader
-    TemporaryFileChunkReader --> AbstractDegradedChunkReader
+    FileChunkReader --> AbstractDegradedChunkReader
 ```
 
 - `BufferChunkReader` 直接消费共享 `ChunkStash`（按 index 读，`done`
@@ -462,9 +457,8 @@ graph BT
   - 状态就是实例字段——1:1 之下无需再按 stash 键控。
 - `FileChunkReader` 是 `AbstractDegradedChunkReader` 的 Node 文件系统读
   实现，配套其 `FileTransferrer` 提供写侧；两者实现于兄弟包
-  `@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）。
-  临时文件版（`TemporaryFileChunkReader`：`os.tmpdir()` 下取名、释放即删）
-  将来在它之上实现；浏览器分支（IndexedDB / OPFS）同挂其下。
+  `@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）；
+  释放即删自己创建的那个文件。浏览器分支（IndexedDB / OPFS）同挂其下。
 
 ### 切换流程
 
@@ -485,8 +479,8 @@ sequenceDiagram
 
     BUF-->>BUF: 累计超过阈值
     DIST->>FILE: 将 Buffer[] 内容写入<br/>[4B len][chunk 1]..[chunk 10]
-    DIST->>A: 替换读取器: BufferChunkReader → TemporaryFileChunkReader<br/>已消费 10 个 → 不从文件回放
-    DIST->>B: 替换读取器: BufferChunkReader → TemporaryFileChunkReader<br/>播种位置 2 → 读时过门取数，落介质前逐界定位
+    DIST->>A: 替换读取器: BufferChunkReader → FileChunkReader<br/>已消费 10 个 → 不从文件回放
+    DIST->>B: 替换读取器: BufferChunkReader → FileChunkReader<br/>播种位置 2 → 读时过门取数，落介质前逐界定位
     Note over BUF: 转存成功即 drop（transferrer 执行，不在分发器）
     Note over B: 在途那次 read 由旧读器交接转发（$I.HANDOVER）
 
@@ -593,8 +587,8 @@ sequenceDiagram
 拷贝的 `ensure()` 触发 `source.read()`，拿到 chunk 后广播给所有
 活跃拷贝（各自 `enqueue`）。
 
-慢拷贝不阻塞快拷贝——落后时走 TemporaryFileChunkReader 从磁盘回放即
-可，不参与 source 推进节奏。source 的速率由整体消费节奏决定，不由分发器
+慢拷贝不阻塞快拷贝——落后时走 FileChunkReader 从磁盘回放即可，
+不参与 source 推进节奏。source 的速率由整体消费节奏决定，不由分发器
 预设。
 
 背压点：降级后不再有"等 dump 完成"这一档。`$I.WRITE` 入队即返回、
@@ -634,9 +628,8 @@ sequenceDiagram
 - `DOMException`（`destroy()` 取消源时的原因，`name` 可辨识）
 - `Set` / `Map` / `Promise.withResolvers`（语言内建）
 
-文件降级已实现于兄弟包：`node:fs`（打开/读写）与 `node:crypto`（临时文
-件名的随机段）落在那个包里，不进平台中立的基类——核心包保持零 `node:`
-导入。
+文件降级已实现于兄弟包：`node:fs`（打开 / 读写 / 删除）落在那个包里，
+不进平台中立的基类——核心包保持零 `node:` 导入。
 
 ## 终止信号
 
@@ -665,16 +658,19 @@ sequenceDiagram
 对拷贝流而言，收场只有两种形态：“流正常结束”与“流报错”——下游不
 关心原因时统一处理，需要区分时检查 `error.name`。
 
-## 待定
+## 文件介质的去留
 
-### 临时文件清理
-
-文件版不删文件（2026-09-29）：`_I.DROP`（由 `destroy()` 触发）只关写句柄，
-文件留在宿主给的位置——路径由宿主指定，去留归宿主。在途的 dump 由宿主自查
-`get dropped` 收尾（`_I.DUMP` 开完句柄发现已被放开就关掉并退出，不落字节），
-所以“释放先到、dump 后到”不留半截数据。读器只关自己的读句柄（`_I.CLOSE`）。
-临时文件版（`os.tmpdir()` 下取名 + 释放即删）将来在文件版之上实现，那时
-清理策略归它。
+文件版释放即删（2026-09-29 改，推翻同日"只关句柄、文件留下"的口径）：
+`_I.DROP`（由 `destroy()` 触发）关写句柄**并删掉本介质自己创建的那个文件**
+——正常收场不留残留。判据是"本介质开过句柄"：降级后、首次 dump 前就被
+`destroy()` 的那种没开过，什么都不删，宿主已存在的文件不受影响。
+删除带重试（`force` + `maxRetries` / `retryDelay`，盖住 Windows 的
+`EPERM` / `EBUSY`）：放开的当场，各拷贝的读句柄可能还没关完。
+在途的 dump 由宿主自查 `get dropped` 收尾（`_I.DUMP` 开完句柄发现已被放开就
+关掉并退出，不落字节），那条路走同一个"关并删"，所以"释放先到、dump 后到"
+既不留半截数据也不留空文件。读器只关自己的读句柄（`_I.CLOSE`）。
+代价：`destroy()` 常发生在失败收场（介质写失败、源报错），那时文件同样被删，
+现场不再保留；要留档的宿主须在 `destroy()` 之前自己复制。
 
 ## 已知风险与可观测性
 
