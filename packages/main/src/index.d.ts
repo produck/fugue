@@ -72,7 +72,7 @@ declare const READER_CTOR: typeof DISTRIBUTOR_S.DEGRADED_CHUNK_READER_CTOR;
 
 /** The bytes captured from the source, waiting for the medium. */
 export interface ChunkStash<Chunk extends Uint8Array = Uint8Array> {
-  /** The source reached its end — the stash is sealed. */
+  /** The source reached its end. */
   readonly done: boolean;
 
   /** The number of chunks held. */

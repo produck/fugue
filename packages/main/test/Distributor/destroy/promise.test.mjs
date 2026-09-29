@@ -38,7 +38,7 @@ describe('>promise', () => {
     assert.match(reason.message, EXPECTED.ABORTED.message);
   });
 
-  it('should find the store sealed and released', async () => {
+  it('should find the transferrer done and dropped', async () => {
     const family = makeFamily();
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
