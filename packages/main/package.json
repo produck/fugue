@@ -3,6 +3,7 @@
     "url": "https://github.com/produck/node-readable-stream-distributor/issues"
   },
   "dependencies": {
+    "@produck/argot": "^0.1.2",
     "@produck/deep-freeze-enumerable": "^1.1.1",
     "@produck/es-abstract": "^0.3.3",
     "@produck/ow": "^0.2.5",

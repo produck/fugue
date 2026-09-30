@@ -1,6 +1,5 @@
 import { deepFreeze } from '@produck/deep-freeze-enumerable';
 
-const I_CTOR = Symbol('.#ctor');
 const I_SOURCE_READER = Symbol('.#sourceReader');
 const I_DEGRADED_CHUNK_READER_CTOR = Symbol('.#degradedChunkReaderCtor');
 const I_CURRENT_CHUNK_READER_CTOR = Symbol('.#currentChunkReaderCtor');
@@ -9,7 +8,6 @@ const I_TRANSFERRER_CTOR = Symbol('.#transferrerCtor');
 const I_WARNING_COUNT_RECORD = Symbol('.#warningCountRecord');
 
 export const I = deepFreeze({
-  CTOR: I_CTOR,
   SOURCE_READER: I_SOURCE_READER,
   DEGRADED_CHUNK_READER_CTOR: I_DEGRADED_CHUNK_READER_CTOR,
   CURRENT_CHUNK_READER_CTOR: I_CURRENT_CHUNK_READER_CTOR,

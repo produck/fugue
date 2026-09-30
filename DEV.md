@@ -17,6 +17,29 @@
   标 `OrPromiseLike(Boolean)`；`_I.READ` 返回 `{ value, done }`，契约保持
   宽松 `OrPromiseLike()`）。
 
+### 共享词汇：@produck/argot
+
+组织级共享词汇包（`Common` 助手 + `SYMBOL` 符号表），2026-09-30 接入核心包，
+替掉本地近义写法：
+
+- `Common.ignoreRejection(promise)` ← 本地那份 `.catch(() => {})`
+  （`Distributor/Abstract.mjs` 的 `initializeReader`：初始化失败由读点收，
+  这里只吞给自己）。
+- `Common.sleep(ms)` ← 本地两处 `setTimeout` 包装（读器初始化、写侧
+  dump / drain 的重试等待）。
+- `Common.ThrowFalse(fn)` ← `Checker.mjs` 里本地的 `try { … } catch { false }`
+  （`isReadableStream` 的"有判据、不抛"保证）。注意这个成员在 0.1.2 是
+  **工厂**：`ThrowFalse(fn)` 返回 `(...args) => …`，不是立即调用；0.1.0 里
+  它叫小写的 `throwFalse` 且立即调用——包写的是 `^0.1.2`，两者别混。
+- `SYMBOL.CONSTRUCTOR` ← 本地的 `I.CTOR`（`.#ctor`）：`_Symbol.mjs` 不再
+  声明这个键，且照旧"纯叶子、不引用任何东西"——argot 的 import 落在
+  `Abstract.mjs`。
+
+一处域收紧：`Common.sleep` 断言"非负整数"，本地那份会把小数静默交给
+`setTimeout` 截断。三个 interval 选项本来就是 `NonNegativeInteger`（`Tune`
+时读一次校验），但 `Get` **不在读时复查**，所以"Tune 一个 getter、它后来
+返回非整数"会在这条重试路径上抛 `TypeError`——违约用法，未单独实测。
+
 ### Symbol 约定
 
 - **三个维度**（总纲）：**原始含义**（`_Symbol.mjs` 里
@@ -47,8 +70,10 @@
 - 面向调用者的具名成员（如 `get dumping` / `get done`）用普通字符串键。
 - 缩写白名单：构造器（`new.target` 捕获）→ `CTOR`。**符号键持有类值一律
   以 `_CTOR` 结尾**（`_S.DEGRADED_CHUNK_READER_CTOR` /
-  `_S.TRANSFERRER_CTOR`）。组织级共享符号集（待建）收编这类通用含义的
-  键，避免每个模块重复声明。
+  `_S.TRANSFERRER_CTOR`）。组织级共享符号集已建成（`@produck/argot` 的
+  `SYMBOL`，2026-09-30）：第一个被收编的是捕获的构造器
+  `SYMBOL.CONSTRUCTOR`（原来本地的 `.#ctor` 已删）；`_S` 里那几个持类值的
+  槽仍本地声明（argot 只给 `CONSTRUCTOR`）。
 - **两个表文件分工**：`_Symbol.mjs` 只定义自己的表（纯叶子，不引用任
   何东西）并出别名 `A`；对外的表单独放 `_External.mjs`，在那里导入并
   转发（`export * as CHUNK_READER from '../ChunkReader/_Symbol.mjs'`），
@@ -98,8 +123,8 @@
 ### 受保护实例字段与静态钩子（`_S`）
 
 - 分发器没有公开静态面：策略只经 `_S` 静态钩子声明类值（现只剩
-  `_S.DEGRADED_CHUNK_READER_CTOR`），消费者是构造时捕获的 `I.CTOR`
-  （`new.target`），不用 `this.constructor`。
+  `_S.DEGRADED_CHUNK_READER_CTOR`），消费者是构造时捕获的
+  `SYMBOL.CONSTRUCTOR`（`new.target`），不用 `this.constructor`。
 - 内存→介质阈值：**选项** `MaxStashByteLength`（默认 1GiB 由 `Items.mjs` 给）。
   读经 `Options.Get.MaxStashByteLength`、写经 `Options.Tune`——构造器只收
   `source`，没有第二个写入点；降级触发点因此确定可复现。
@@ -135,8 +160,7 @@
   （fork 注册表，fork 出口自清理也要读）· `$I.TERMINATION`（未终结为
   `null`，否则是终止原因；只剩 `fork()` 闸门与 `destroy()` 的取消读它）·
   `$I.WARN`（`warn` 的单出口——受保护成员，收 `(code, payload)`）·
-  `I.CTOR`
-  （捕获的自身类）· 两个类值
+  `SYMBOL.CONSTRUCTOR`（捕获的自身类，共享符号）· 两个类值
   getter `I.DEGRADED_CHUNK_READER_CTOR` / `I.TRANSFERRER_CTOR`，以及当前
   相位字段 `I.CURRENT_CHUNK_READER_CTOR`（初值 `BufferChunkReader`，降级
   换读器时置为前者）。受保护侧另有写侧实例 `$I.TRANSFERRER`，及其待用构造参数的

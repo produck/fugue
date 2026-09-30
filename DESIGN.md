@@ -622,14 +622,19 @@ sequenceDiagram
 
 ## 依赖
 
-零外部依赖，且当前源码**零 `node:` 导入**——只用平台全局：
+源码**零 `node:` 导入**：需要宿主平台给的只有这几样——
 
 - `EventTarget` / `ReadableStream`（WHATWG，Node 与浏览器都有）
 - `DOMException`（`destroy()` 取消源时的原因，`name` 可辨识）
 - `Set` / `Map` / `Promise.withResolvers`（语言内建）
 
+平台之外只依赖**组织内共享包**，不引第三方：`@produck/es-abstract`
+（抽象契约）、`@produck/argot`（共享词汇 `Common` / `SYMBOL`）、
+`@produck/type-error`（参数报文）、`@produck/ow`（抛错出口）、
+`@produck/deep-freeze-enumerable`（符号表冻结）。
+
 文件降级已实现于兄弟包：`node:fs`（打开 / 读写 / 删除）落在那个包里，
-不进平台中立的基类——核心包保持零 `node:` 导入。
+不进平台中立的基类。
 
 ## 终止信号
 

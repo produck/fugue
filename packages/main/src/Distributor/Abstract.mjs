@@ -1,5 +1,6 @@
 import * as Ow from '@produck/ow';
 import { ThrowTypeError } from '@produck/type-error';
+import { Common, SYMBOL } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import * as BufferChunkReader from './BufferChunkReader/index.mjs';
@@ -16,12 +17,12 @@ import * as Options from './Options/index.mjs';
 import { I, $I, _S, A } from './_Symbol.mjs';
 import { _A, PART, TRANSFERRER } from './_External.mjs';
 
-const noop = () => {};
-
 const TERMINATION_MESSAGE = 'The distributor has been terminated';
 
 async function initializeReader(reader, progress) {
-  await reader[_A.DEGRADED.$I.REQUEST_INITIALIZE](progress).catch(noop);
+  const initializing = reader[_A.DEGRADED.$I.REQUEST_INITIALIZE](progress);
+
+  await Common.ignoreRejection(initializing);
 }
 
 class ReadableStreamDistributor extends EventTarget {
@@ -43,7 +44,7 @@ class ReadableStreamDistributor extends EventTarget {
 
     Options.install(this);
 
-    this[I.CTOR] = new.target;
+    this[SYMBOL.CONSTRUCTOR] = new.target;
     this[A.I.SOURCE] = new SourceReader.Concrete(this, source);
     this[A.$I.AGENT] = new SourceConsumptionAgent(this);
   }
@@ -137,7 +138,7 @@ class ReadableStreamDistributor extends EventTarget {
   }
 
   get [A.I.CTOR.READER.DEGRADED]() {
-    return this[I.CTOR][_S.DEGRADED_CHUNK_READER_CTOR];
+    return this[SYMBOL.CONSTRUCTOR][_S.DEGRADED_CHUNK_READER_CTOR];
   }
 
   get [A.I.CTOR.TRANSFERRER]() {

@@ -1,4 +1,5 @@
 import * as Ow from '@produck/ow';
+import { Common } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import * as ChunkReader from '../ChunkReader/index.mjs';
@@ -8,7 +9,6 @@ import * as Options from '../Options/index.mjs';
 import * as Warning from '../Warning.mjs';
 
 const CODE = Warning.CODES.DEGRADED_READER;
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AbstractDegradedChunkReader extends ChunkReader.Abstract {
   [I.CLOSED] = false;
@@ -58,7 +58,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         }
 
         state.retry++;
-        await sleep(retryInterval);
+        await Common.sleep(retryInterval);
       }
     }
 
