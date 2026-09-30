@@ -17,6 +17,8 @@ Deltas against `.github/instructions/produck/10-produck-node.instructions.md`.
   - `EXCEPTIONS.md`: the normative behaviour after an exception (failure
     domains, reporting surface, recovery ownership).
   - `SWITCHING.md`: migration notes and open items.
+  - `TODO.md`: framework-layer improvement candidates, each with its cost and
+    the decision (do / later / not).
 - Documents are written in Chinese prose with English terms, headings `#`
   followed by a blockquote lead.
 
