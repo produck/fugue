@@ -30,7 +30,7 @@ Deltas against `.github/instructions/produck/10-produck-node.instructions.md`.
 ## Test imports
 
 - Source is reached by the package name itself
-  (`@produck/readable-stream-distributor`), not by a path or an alias. Node
+  (`@produck/fugue`), not by a path or an alias. Node
   resolves it inside the package through `exports`, so a test walks the same
   surface a consumer walks and fails as soon as `exports` stops answering.
 - `packages/main/package.json` declares an `imports` map with `#test/*` only,

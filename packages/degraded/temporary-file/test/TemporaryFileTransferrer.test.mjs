@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { isAbsolute } from 'node:path';
 import { describe, it } from 'node:test';
 
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
 import { drain, makeFamily, makeSource } from '#test/baseline.mjs';
 
-const { Options } = Core;
+const { Options } = Fugue;
 
 const makeSpooling = (chunks) => {
   const family = makeFamily();

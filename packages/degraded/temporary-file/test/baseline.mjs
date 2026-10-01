@@ -1,8 +1,8 @@
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-import * as TemporaryFile from '@produck/readable-stream-distributor-degraded-temporary-file';
+import * as TemporaryFile from '@produck/fugue-degraded-temporary-file';
 
-const { Distributor, SYMBOL } = Core;
+const { Distributor, SYMBOL } = Fugue;
 const { ChunkReader, Transferrer } = TemporaryFile;
 const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
 const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;

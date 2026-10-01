@@ -3,10 +3,10 @@
     "url": "https://github.com/produck/node-readable-stream-distributor/issues"
   },
   "dependencies": {
-    "@produck/readable-stream-distributor": "^0.0.0",
+    "@produck/fugue": "^0.0.0",
     "@produck/type-error": "^0.1.7"
   },
-  "description": "The file degraded medium for @produck/readable-stream-distributor, on Node's file system.",
+  "description": "The file degraded medium for @produck/fugue, on Node's file system.",
   "exports": {
     ".": {
       "import": "./src/index.mjs",
@@ -27,7 +27,7 @@
   ],
   "license": "MIT",
   "main": "./src/index.mjs",
-  "name": "@produck/readable-stream-distributor-degraded-node-file",
+  "name": "@produck/fugue-degraded-node-file",
   "repository": {
     "directory": "packages/degraded/node-file",
     "type": "git",

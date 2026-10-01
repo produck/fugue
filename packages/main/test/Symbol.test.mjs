@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { SYMBOL } from '@produck/readable-stream-distributor';
+import { SYMBOL } from '@produck/fugue';
 
 const OPENED = {
   DISTRIBUTOR: {

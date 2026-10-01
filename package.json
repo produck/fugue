@@ -14,7 +14,7 @@
     "prettier": "3.9.6",
     "typescript-eslint": "8.65.0"
   },
-  "name": "@produck/readable-stream-distributor-workspace",
+  "name": "@produck/fugue-workspace",
   "private": true,
   "scripts": {
     "prepare": "husky",

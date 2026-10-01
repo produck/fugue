@@ -3,9 +3,9 @@ import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-import * as NodeFile from '@produck/readable-stream-distributor-degraded-node-file';
+import * as NodeFile from '@produck/fugue-degraded-node-file';
 
 import {
   drain,
@@ -15,7 +15,7 @@ import {
   removeTemporaryDirectory,
 } from '#test/baseline.mjs';
 
-const { Options, SYMBOL } = Core;
+const { Options, SYMBOL } = Fugue;
 const { FileTransferrer } = NodeFile;
 const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
 

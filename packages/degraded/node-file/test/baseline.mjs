@@ -2,11 +2,11 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-import * as NodeFile from '@produck/readable-stream-distributor-degraded-node-file';
+import * as NodeFile from '@produck/fugue-degraded-node-file';
 
-const { Distributor, SYMBOL } = Core;
+const { Distributor, SYMBOL } = Fugue;
 const { FileChunkReader, FileTransferrer } = NodeFile;
 const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
 const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;

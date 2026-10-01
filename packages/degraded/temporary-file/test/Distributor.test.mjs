@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { stat } from 'node:fs/promises';
 import { describe, it } from 'node:test';
 
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
 import { drain, makeFamily, makeSource } from '#test/baseline.mjs';
 
-const { Options } = Core;
+const { Options } = Fugue;
 
 const makeSpooling = (chunks) => {
   const family = makeFamily();

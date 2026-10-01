@@ -3,10 +3,10 @@
     "url": "https://github.com/produck/node-readable-stream-distributor/issues"
   },
   "dependencies": {
-    "@produck/readable-stream-distributor": "^0.0.0",
-    "@produck/readable-stream-distributor-degraded-node-file": "^0.0.0"
+    "@produck/fugue": "^0.0.0",
+    "@produck/fugue-degraded-node-file": "^0.0.0"
   },
-  "description": "The temporary-file degraded medium for @produck/readable-stream-distributor: it names its own file under the OS temporary directory.",
+  "description": "The temporary-file degraded medium for @produck/fugue: it names its own file under the OS temporary directory.",
   "exports": {
     ".": {
       "import": "./src/index.mjs",
@@ -28,7 +28,7 @@
   ],
   "license": "MIT",
   "main": "./src/index.mjs",
-  "name": "@produck/readable-stream-distributor-degraded-temporary-file",
+  "name": "@produck/fugue-degraded-temporary-file",
   "repository": {
     "directory": "packages/degraded/temporary-file",
     "type": "git",

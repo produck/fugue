@@ -1,7 +1,7 @@
-# @produck/readable-stream-distributor-degraded-node-file
+# @produck/fugue-degraded-node-file
 
 > The file degraded medium for
-> `@produck/readable-stream-distributor`, on Node's file system.
+> `@produck/fugue`, on Node's file system.
 
 The distributor spills to a medium once its stash grows past
 `MaxStashByteLength`. This package is that medium for Node: framed records
@@ -11,19 +11,17 @@ in the file the host names, bare `node:fs` underneath, and
 ## Install
 
 ```sh
-npm install @produck/readable-stream-distributor-degraded-node-file
+npm install @produck/fugue-degraded-node-file
 ```
 
 ## Use
 
 ```js
-import * as Core from '@produck/readable-stream-distributor';
-import { FileChunkReader } from '@produck/readable-stream-distributor-degraded-node-file';
+import * as Fugue from '@produck/fugue';
+import { FileChunkReader } from '@produck/fugue-degraded-node-file';
 
-const { Distributor, Options, SYMBOL } = Core;
-
-class UploadDistributor extends Distributor {
-  static get [SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR]() {
+class UploadDistributor extends Fugue.Distributor {
+  static get [Fugue.SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR]() {
     return FileChunkReader;
   }
 }
@@ -31,7 +29,7 @@ class UploadDistributor extends Distributor {
 const distributor = new UploadDistributor(source);
 
 distributor.setTransferrerArgs('/var/tmp/upload.spool');
-Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
 
 const copy = distributor.fork();
 ```

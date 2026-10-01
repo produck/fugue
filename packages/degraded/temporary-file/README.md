@@ -1,8 +1,8 @@
-# @produck/readable-stream-distributor-degraded-temporary-file
+# @produck/fugue-degraded-temporary-file
 
 > The temporary-file degraded medium for
-> `@produck/readable-stream-distributor`, built on
-> `@produck/readable-stream-distributor-degraded-node-file`.
+> `@produck/fugue`, built on
+> `@produck/fugue-degraded-node-file`.
 
 The distributor spills to a medium once its stash grows past
 `MaxStashByteLength`. This package is that medium for a host with no
@@ -16,19 +16,18 @@ this package decides the path, and nothing else.
 ## Install
 
 ```sh
-npm install @produck/readable-stream-distributor-degraded-temporary-file
+npm install @produck/fugue-degraded-temporary-file
 ```
 
 ## Use
 
 ```js
-import * as Core from '@produck/readable-stream-distributor';
-import { ChunkReader } from '@produck/readable-stream-distributor-degraded-temporary-file';
+import * as Fugue from '@produck/fugue';
+import { ChunkReader } from '@produck/fugue-degraded-temporary-file';
 
-const { Distributor, Options, SYMBOL } = Core;
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
 
-class UploadDistributor extends Distributor {
+class UploadDistributor extends Fugue.Distributor {
   static get [DEGRADED_CHUNK_READER_CTOR]() {
     return ChunkReader;
   }
@@ -36,7 +35,7 @@ class UploadDistributor extends Distributor {
 
 const distributor = new UploadDistributor(source);
 
-Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
 
 const copy = distributor.fork();
 ```
@@ -65,7 +64,7 @@ Both are also exported as `ChunkReader` and `Transferrer` — the pair every
 Node only: `os.tmpdir()` and `node:crypto` pick the name, `node:fs` writes
 the file. A host that wants the spool where it chose, or wants to keep it,
 should use the sibling instead:
-`@produck/readable-stream-distributor-degraded-node-file`.
+`@produck/fugue-degraded-node-file`.
 
 ## License
 

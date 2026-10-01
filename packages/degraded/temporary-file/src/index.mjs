@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 
-import * as Core from '@produck/readable-stream-distributor';
-import * as File from '@produck/readable-stream-distributor-degraded-node-file';
+import * as Fugue from '@produck/fugue';
+import * as File from '@produck/fugue-degraded-node-file';
 
-const { SYMBOL: DISTRIBUTOR } = Core;
+const { SYMBOL: DISTRIBUTOR } = Fugue;
 
 export class TemporaryFileTransferrer extends File.FileTransferrer {
   constructor() {

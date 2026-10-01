@@ -30,7 +30,7 @@
   ],
   "license": "MIT",
   "main": "./src/index.mjs",
-  "name": "@produck/readable-stream-distributor",
+  "name": "@produck/fugue",
   "repository": {
     "directory": "packages/main",
     "type": "git",

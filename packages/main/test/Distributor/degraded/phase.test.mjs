@@ -6,7 +6,7 @@ import {
   Distributor,
   Options,
   SYMBOL,
-} from '@produck/readable-stream-distributor';
+} from '@produck/fugue';
 
 import {
   makeFamily,

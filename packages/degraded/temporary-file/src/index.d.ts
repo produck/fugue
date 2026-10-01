@@ -1,8 +1,8 @@
-import * as Core from '@produck/readable-stream-distributor';
-import * as File from '@produck/readable-stream-distributor-degraded-node-file';
+import * as Fugue from '@produck/fugue';
+import * as File from '@produck/fugue-degraded-node-file';
 
-declare const TRANSFERRER_S: typeof Core.SYMBOL.TRANSFERRER._S;
-declare const READER_S: typeof Core.SYMBOL.DEGRADED_CHUNK_READER._S;
+declare const TRANSFERRER_S: typeof Fugue.SYMBOL.TRANSFERRER._S;
+declare const READER_S: typeof Fugue.SYMBOL.DEGRADED_CHUNK_READER._S;
 
 /**
  * The write side of the sibling medium, with the file named here.

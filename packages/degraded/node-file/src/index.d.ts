@@ -1,9 +1,9 @@
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-declare const TRANSFERRER_I: typeof Core.SYMBOL.TRANSFERRER._I;
-declare const TRANSFERRER_S: typeof Core.SYMBOL.TRANSFERRER._S;
-declare const READER_I: typeof Core.SYMBOL.DEGRADED_CHUNK_READER._I;
-declare const READER_S: typeof Core.SYMBOL.DEGRADED_CHUNK_READER._S;
+declare const TRANSFERRER_I: typeof Fugue.SYMBOL.TRANSFERRER._I;
+declare const TRANSFERRER_S: typeof Fugue.SYMBOL.TRANSFERRER._S;
+declare const READER_I: typeof Fugue.SYMBOL.DEGRADED_CHUNK_READER._I;
+declare const READER_S: typeof Fugue.SYMBOL.DEGRADED_CHUNK_READER._S;
 
 /**
  * The write side: framed records in one file.
@@ -16,7 +16,7 @@ declare const READER_S: typeof Core.SYMBOL.DEGRADED_CHUNK_READER._S;
  * transferrer opened, so a host that wants the spool must copy it
  * before destroying.
  */
-export declare class FileTransferrer extends Core.Transferrer {
+export declare class FileTransferrer extends Fugue.Transferrer {
   /** The pathname this transferrer was built with. Absolute. */
   constructor(pathname: string);
 
@@ -26,7 +26,7 @@ export declare class FileTransferrer extends Core.Transferrer {
   /** Reads the file path out. */
   static [TRANSFERRER_S.PARSE_ARGUMENTS](args: unknown[]): unknown[];
 
-  [TRANSFERRER_I.DUMP](stash: Core.ChunkStash): Promise<void>;
+  [TRANSFERRER_I.DUMP](stash: Fugue.ChunkStash): Promise<void>;
 
   [TRANSFERRER_I.WRITE](chunk: Uint8Array): Promise<void>;
 
@@ -39,7 +39,7 @@ export declare class FileTransferrer extends Core.Transferrer {
  * A record's index in the file is its position in the shared sequence, so a
  * reader is born at the first record and the framework seeks it forward.
  */
-export declare class FileChunkReader extends Core.DegradedChunkReader {
+export declare class FileChunkReader extends Fugue.DegradedChunkReader {
   /** The transferrer family this reader reads back from. */
   static get [READER_S.TRANSFERRER_CTOR](): typeof FileTransferrer;
 
@@ -47,7 +47,7 @@ export declare class FileChunkReader extends Core.DegradedChunkReader {
 
   [READER_I.SEEK](): Promise<boolean>;
 
-  [READER_I.READ](): Promise<Core.ReadableChunkResult>;
+  [READER_I.READ](): Promise<Fugue.ReadableChunkResult>;
 
   [READER_I.CLOSE](): Promise<void>;
 }

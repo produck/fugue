@@ -46,7 +46,7 @@ false`），否则拒绝构造。跨 realm 分享过来的流（`postMessage` �
 造出来的对象才过不了这条判据，那要宿主自己包一层（2026-09-29 更正）。
 
 ```js
-import { ReadableStreamDistributor } from '@produck/readable-stream-distributor';
+import { ReadableStreamDistributor } from '@produck/fugue';
 
 // 抽象类：须继承后实例化
 class MyDistributor extends ReadableStreamDistributor {}
@@ -130,7 +130,7 @@ graph TD
 当前状态下所有 `class` 声明的结构与关系。`<<abstract>>` 表示该类经
 `@produck/es-abstract` 的 `Abstract()` 包装（抽象契约 + 子类校验）；
 文件版 `FileChunkReader` / `FileTransferrer` 实现于兄弟包
-`@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）。
+`@produck/fugue-degraded-node-file`（2026-09-29）。
 
 ```mermaid
 classDiagram
@@ -457,7 +457,7 @@ graph BT
   - 状态就是实例字段——1:1 之下无需再按 stash 键控。
 - `FileChunkReader` 是 `AbstractDegradedChunkReader` 的 Node 文件系统读
   实现，配套其 `FileTransferrer` 提供写侧；两者实现于兄弟包
-  `@produck/readable-stream-distributor-degraded-node-file`（2026-09-29）；
+  `@produck/fugue-degraded-node-file`（2026-09-29）；
   释放即删自己创建的那个文件。浏览器分支（IndexedDB / OPFS）同挂其下。
 
 ### 切换流程
@@ -635,7 +635,7 @@ sequenceDiagram
 
 介质实现于兄弟包，不进平台中立的基类：`@produck/readable-stream-
 distributor-degraded-node-file`（`node:fs` 打开 / 读写 / 删除）与建在它之上的
-`@produck/readable-stream-distributor-degraded-temporary-file`
+`@produck/fugue-degraded-temporary-file`
 （`os.tmpdir()` + `node:crypto` 取名）。核心包保持零 `node:` 导入。
 
 ## 终止信号

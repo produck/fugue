@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options } from '@produck/readable-stream-distributor';
+import { Options } from '@produck/fugue';
 
 import {
   makeFamily,

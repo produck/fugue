@@ -1,25 +1,19 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 
-import {
-  Distributor,
-  DegradedChunkReader,
-  Options,
-  SYMBOL,
-  Transferrer,
-} from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
 import { drain, makeSource } from '#test/baseline.mjs';
 
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
-const { _I: READER, _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
+const { _I: READER, _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const EXPECTED = {
   ABORTED: { name: 'AbortError' },
 };
 
-class MemoryTransferrer extends Transferrer {
+class MemoryTransferrer extends Fugue.Transferrer {
   records = [];
 
   [TRANSFERRER.DUMP](stash) {
@@ -39,7 +33,7 @@ class MemoryTransferrer extends Transferrer {
   }
 }
 
-class MemoryReader extends DegradedChunkReader {
+class MemoryReader extends Fugue.DegradedChunkReader {
   static [READER_S.TRANSFERRER_CTOR] = MemoryTransferrer;
 
   cursor = 0;
@@ -69,7 +63,7 @@ class MemoryReader extends DegradedChunkReader {
   [READER.CLOSE]() {}
 }
 
-class MemoryDistributor extends Distributor {
+class MemoryDistributor extends Fugue.Distributor {
   static [DEGRADED_CHUNK_READER_CTOR] = MemoryReader;
 }
 
@@ -87,7 +81,7 @@ it('should carry a live copy across the switch to the medium', async () => {
   const distributor = new MemoryDistributor(makeSource(['hello ', 'world']));
   const copy = distributor.fork();
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   assert.deepEqual(await drain(copy), ['hello ', 'world']);
   assert.equal(distributor.degraded, true);
@@ -97,7 +91,7 @@ it('should serve a copy forked after the switch, from birth', async () => {
   const distributor = new MemoryDistributor(makeSource(['hello ', 'world']));
   const early = distributor.fork().getReader();
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   await early.read();
   assert.equal(distributor.degraded, true);

@@ -1,11 +1,14 @@
-# @produck/readable-stream-distributor
+# @produck/fugue
 
 > One source stream, many independent copies.
 
-`@produck/readable-stream-distributor` hands one WHATWG `ReadableStream`
-to any number of independent readers. Every copy reads the whole stream
-from the first byte to the end, at its own pace, without stealing bytes
-from the others.
+`@produck/fugue` hands one WHATWG `ReadableStream` to any number of
+independent readers. Every copy reads the whole stream from the first
+byte to the end, at its own pace, without stealing bytes from the others.
+
+The name says it. In a fugue every voice plays the whole subject, entering
+in its own time and never waiting for the others — which is what a copy
+does here, and how the framework is built.
 
 The package is a framework, not a finished medium. You subclass three
 abstract classes — `Distributor`, `DegradedChunkReader`, `Transferrer` —
@@ -13,7 +16,7 @@ and the framework does the rest: fan-out, bookkeeping of positions,
 backpressure, retries and reporting.
 
 On Node, one medium is already written:
-`@produck/readable-stream-distributor-degraded-node-file` — see
+`@produck/fugue-degraded-node-file` — see
 [File medium](#file-medium).
 
 - [How it works](#how-it-works)
@@ -58,7 +61,7 @@ A source that ends while still under the limit never degrades — unless
 ## Install
 
 ```sh
-npm install @produck/readable-stream-distributor
+npm install @produck/fugue
 ```
 
 Requires Node.js 22 or later, for `Promise.withResolvers` and the WHATWG
@@ -70,18 +73,13 @@ A distributor is a subclass of `Distributor`, and the family it forks
 into is named by one static slot. The smallest useful medium is memory.
 
 ```js
-import {
-  Distributor,
-  DegradedChunkReader,
-  SYMBOL,
-  Transferrer,
-} from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
-const { _I: READER, _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
+const { _I: READER, _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
-class MemoryTransferrer extends Transferrer {
+class MemoryTransferrer extends Fugue.Transferrer {
   records = [];
 
   [TRANSFERRER.DUMP](stash) {
@@ -101,7 +99,7 @@ class MemoryTransferrer extends Transferrer {
   }
 }
 
-class MemoryReader extends DegradedChunkReader {
+class MemoryReader extends Fugue.DegradedChunkReader {
   static [READER_S.TRANSFERRER_CTOR] = MemoryTransferrer;
 
   cursor = 0;
@@ -131,7 +129,7 @@ class MemoryReader extends DegradedChunkReader {
   [READER.CLOSE]() {}
 }
 
-class MemoryDistributor extends Distributor {
+class MemoryDistributor extends Fugue.Distributor {
   static [DEGRADED_CHUNK_READER_CTOR] = MemoryReader;
 }
 ```
@@ -168,26 +166,25 @@ takes a stream.
 ## File medium
 
 On Node, writing a medium of your own is optional:
-`@produck/readable-stream-distributor-degraded-node-file` is that medium
+`@produck/fugue-degraded-node-file` is that medium
 for the file system — framed records in a file the host names, read back
 by position, on bare `node:fs`, with no dependency beyond this framework
 and `@produck/type-error`.
 
 ```sh
-npm install @produck/readable-stream-distributor-degraded-node-file
+npm install @produck/fugue-degraded-node-file
 ```
 
 The host wires it with one class. Its reader names its own write side
 through the static slot, so a distributor subclass is the whole of it:
 
 ```js
-import * as Core from '@produck/readable-stream-distributor';
-import { FileChunkReader } from '@produck/readable-stream-distributor-degraded-node-file';
+import * as Fugue from '@produck/fugue';
+import { FileChunkReader } from '@produck/fugue-degraded-node-file';
 
-const { Distributor, Options, SYMBOL } = Core;
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
 
-class UploadDistributor extends Distributor {
+class UploadDistributor extends Fugue.Distributor {
   static get [DEGRADED_CHUNK_READER_CTOR]() {
     return FileChunkReader;
   }
@@ -196,7 +193,7 @@ class UploadDistributor extends Distributor {
 const distributor = new UploadDistributor(source);
 
 distributor.setTransferrerArgs('/var/tmp/upload.spool');
-Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
 ```
 
 - The pathname must be absolute, and it is the medium's only argument.
@@ -206,7 +203,7 @@ Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
 - Its own manual covers the record format and the two classes.
 
 A host with no opinion about the path can use
-`@produck/readable-stream-distributor-degraded-temporary-file` instead:
+`@produck/fugue-degraded-temporary-file` instead:
 the same medium, naming its own file under the OS temporary directory.
 
 A file is not the answer for every host: [The medium](#the-medium) below
@@ -285,8 +282,8 @@ One shot. The args are parsed once, by your transferrer's
 degrade time.
 
 ```js
-// SYMBOL and TRANSFERRER come from the destructuring in Quick start.
-class FileTransferrer extends Transferrer {
+// `SYMBOL` and `TRANSFERRER` come from the Quick start above.
+class FileTransferrer extends Fugue.Transferrer {
   static [TRANSFERRER._S.PARSE_ARGUMENTS](args) {
     const [path] = args;
 
@@ -323,8 +320,8 @@ Throws `TypeError` when `code` is outside the warning vocabulary.
 ### Static slot
 
 ```js
-class MyDistributor extends Distributor {
-  static [SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR] = MyReader;
+class MyDistributor extends Fugue.Distributor {
+  static [Fugue.SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR] = MyReader;
 }
 ```
 
@@ -370,20 +367,20 @@ What they mean:
 
 Three ways to reach them.
 
-### `Options.Tune.<name>(distributor, value)`
+### `Fugue.Options.Tune.<name>(distributor, value)`
 
 Sets one option. `value` is either a value or a getter
 `(options) => value`, read at every use — so one option can follow
 another. The default of `MaxBacklogWarningByteLength` is exactly that:
 
 ```js
-Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
 
-Options.Tune.MaxBacklogWarningByteLength(distributor, (options) => {
+Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, (options) => {
   return options.MaxStashByteLength(options) / 2;
 });
 
-Options.Tune.MaxDrainRetryCount(distributor, (options) => {
+Fugue.Options.Tune.MaxDrainRetryCount(distributor, (options) => {
   return options.MaxDumpRetryCount(options);
 });
 ```
@@ -391,15 +388,15 @@ Options.Tune.MaxDrainRetryCount(distributor, (options) => {
 The value is validated when it is installed, by reading the getter once.
 An invalid value throws.
 
-### `Options.Get.<name>(distributor)`
+### `Fugue.Options.Get.<name>(distributor)`
 
 Reads one option now.
 
 ```js
-const limit = Options.Get.MaxStashByteLength(distributor);
+const limit = Fugue.Options.Get.MaxStashByteLength(distributor);
 ```
 
-### `Options.Asset.<name>(distributor)`
+### `Fugue.Options.Asset.<name>(distributor)`
 
 Presets over the three retry budgets.
 
@@ -415,7 +412,7 @@ Presets over the three retry budgets.
 | `unlimitedRetry`           | open all three             |
 
 ```js
-Options.Asset.noRetry(distributor); // fail fast, report once
+Fugue.Options.Asset.noRetry(distributor); // fail fast, report once
 ```
 
 ### `distributor.options`
@@ -425,7 +422,7 @@ A snapshot: every option resolved at the moment of the read.
 ## Events
 
 The distributor is an `EventTarget`. Every event class is exported under
-`Event` and carries its data in `detail`.
+`Fugue.Event` and carries its data in `detail`.
 
 | Type        | Class             | `detail`            |
 | ----------- | ----------------- | ------------------- |
@@ -507,13 +504,13 @@ Abstract. The write side: take the stash, write one chunk, let the
 medium go. Its getters are the framework's own bookkeeping; the members
 are your business.
 
-#### `static [SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args)`
+#### `static [Fugue.SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args)`
 
 Reads what the host passed to `setTransferrerArgs()`, before the
 transferrer is built. The default returns `args` unchanged. An exception
 thrown here reaches the host as it is.
 
-#### `[SYMBOL.TRANSFERRER._I.DUMP](stash)`
+#### `[Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash)`
 
 Hand the whole stash to the medium. `stash.done` tells you whether the
 source reached its end, `stash.length` and `stash.byteLength` what is
@@ -526,13 +523,13 @@ latched: the queued prefix is still served to the copies, but every later
 write and every position wait throws that same error — a tail cut, not a
 whole-stream failure.
 
-#### `[SYMBOL.TRANSFERRER._I.WRITE](chunk)`
+#### `[Fugue.SYMBOL.TRANSFERRER._I.WRITE](chunk)`
 
 Take one chunk. A rejection defers the chunk — it is not lost — and is
 retried per `MaxDrainRetryCount` / `DrainRetryInterval`. When the budget
 runs out, the error is latched as above.
 
-#### `[SYMBOL.TRANSFERRER._I.DROP]()`
+#### `[Fugue.SYMBOL.TRANSFERRER._I.DROP]()`
 
 Let the medium go. Called once, at the end. Its rejection is reported and
 swallowed: the teardown face is fail-soft.
@@ -550,11 +547,11 @@ swallowed: the teardown face is fail-soft.
 
 Abstract. The read side behind the medium: one instance per copy.
 
-#### `static [SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]`
+#### `static [Fugue.SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]`
 
 Required. The transferrer class this reader family writes through.
 
-#### `[SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]()`
+#### `[Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]()`
 
 Open the medium. Only open: no positioning, no reading — that is the
 framework's business. A rejection is retried per `MaxInitializeRetryCount`
@@ -564,7 +561,7 @@ Once the budget runs out, the copy is not killed: the failure surfaces
 only when a read actually needs the medium. Until then the copy keeps
 reading from the queue.
 
-#### `[SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]()`
+#### `[Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]()`
 
 Move the medium forward by one record.
 
@@ -580,7 +577,7 @@ the degrade starts at the first record. `SEEK` crosses without delivering
 — it must not read a body. The framework calls it once per boundary a
 copy has already consumed elsewhere.
 
-#### `[SYMBOL.DEGRADED_CHUNK_READER._I.READ]()`
+#### `[Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.READ]()`
 
 Read back the record at the cursor and answer
 `{ done: false, value: chunk }`, or `{ done: true }` at the end of the
@@ -590,7 +587,7 @@ A rejection is reported as `degraded-reader-read-failed`, it is not
 retried, and that copy is out. By then the chunk is out of the
 framework's hands: the medium is the only copy left.
 
-#### `[SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]()`
+#### `[Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]()`
 
 Shut the medium down. A rejection is reported as
 `degraded-reader-close-failed` and swallowed.
@@ -608,15 +605,15 @@ rather than from the reader.
 
 ## Symbols
 
-Every slot above is exported under `SYMBOL`, frozen and shared by all
+Every slot above is exported under `Fugue.SYMBOL`, frozen and shared by all
 three classes:
 
 ```js
-SYMBOL.TRANSFERRER._I; // DUMP, WRITE, DROP
-SYMBOL.TRANSFERRER._S; // PARSE_ARGUMENTS
-SYMBOL.DEGRADED_CHUNK_READER._I; // READ, INITIALIZE, CLOSE, SEEK
-SYMBOL.DEGRADED_CHUNK_READER._S; // TRANSFERRER_CTOR
-SYMBOL.DISTRIBUTOR._S; // DEGRADED_CHUNK_READER_CTOR
+Fugue.SYMBOL.TRANSFERRER._I; // DUMP, WRITE, DROP
+Fugue.SYMBOL.TRANSFERRER._S; // PARSE_ARGUMENTS
+Fugue.SYMBOL.DEGRADED_CHUNK_READER._I; // READ, INITIALIZE, CLOSE, SEEK
+Fugue.SYMBOL.DEGRADED_CHUNK_READER._S; // TRANSFERRER_CTOR
+Fugue.SYMBOL.DISTRIBUTOR._S; // DEGRADED_CHUNK_READER_CTOR
 ```
 
 Destructure them once at the top of your medium module, as in

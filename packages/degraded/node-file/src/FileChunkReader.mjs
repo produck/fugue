@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 
-import * as Distributor from '@produck/readable-stream-distributor';
+import * as Distributor from '@produck/fugue';
 
 import { FileTransferrer } from './FileTransferrer.mjs';
 import * as Frame from './Frame.mjs';

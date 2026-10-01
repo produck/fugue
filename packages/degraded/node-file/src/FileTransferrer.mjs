@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 
-import * as Distributor from '@produck/readable-stream-distributor';
+import * as Distributor from '@produck/fugue';
 
 import * as Frame from './Frame.mjs';
 import * as Parser from './Parser.mjs';

@@ -984,7 +984,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 ### 2026-10-01
 
 新增第二个介质包 `packages/degraded/temporary-file`
-（`@produck/readable-stream-distributor-degraded-temporary-file`），建在
+（`@produck/fugue-degraded-temporary-file`），建在
 `degraded/node-file` 之上——
 
 - **继承不重写**：`TemporaryFileTransferrer extends FileTransferrer` 只在
@@ -1001,3 +1001,22 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **入口给出通用对**：`ChunkReader` / `Transferrer` 两个别名与
   `degraded/<kind>` 布局配套（`node-file` 也补了），换介质只换包名。
 - **依赖方向**：`temporary-file` → `node-file` → `main`，不反向。
+
+**产品名定为 `fugue`**（同一天，单独一条）：
+
+- **判据是用户给的**：分配类词都暗示“把主流按比例切分”（守恒）；而这个
+  框架做的是**非守恒复制**——每次交付都是**从第 0 字节起的完整一份**，
+  介质里却只存一份（“同一份材料被完整重演 N 次”）。据此排除水／管路族：
+  `delta`（还撞“差分”）`manifold` `plenum` `distributary`（与类名
+  `Distributor` 读音太近）`aqueduct` `irrigation`。
+- **选中的意象**：“每个声部都奏**完整**主题、先后进入、互不等待”，
+  再加词源 _fuga_ = 逃／追 → “前追后赶，各自距离”。
+- **范围**：只换**产品名**（包名 `@produck/fugue` /
+  `-degraded-node-file` / `-degraded-temporary-file`）；**类名不动**——
+  `Distributor` / `Transferrer` / `DegradedChunkReader` 是**角色名**，
+  契约语言都建在它们上面。
+- **下游约定**：核心包一律 `import * as Fugue from '@produck/fugue'`
+  （原来的 `Core` 别名退役；本仓的 `test/` 也跟着换，因为测试走的就是
+  消费者面）。介质包保留自家别名（`NodeFile` / `TemporaryFile`）。
+- **未动**：git 仓名与三个包的 `repository.url` / `bugs` / `homepage`
+  ——仓还没改名，URL 得跟实际仓库一致；要改仓名再说。

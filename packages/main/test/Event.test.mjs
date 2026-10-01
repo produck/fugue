@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Event } from '@produck/readable-stream-distributor';
+import { Event } from '@produck/fugue';
 
 describe('Event', () => {
   describe('::Degrade', () => {

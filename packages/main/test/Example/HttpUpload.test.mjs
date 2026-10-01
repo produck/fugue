@@ -9,17 +9,11 @@ import { Readable, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { it } from 'node:test';
 
-import {
-  Distributor,
-  DegradedChunkReader,
-  Options,
-  SYMBOL,
-  Transferrer,
-} from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
-const { _I: READER, _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
+const { _I: READER, _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const FRAME_HEADER = 4;
 const STASH_LIMIT = 64 * 1024;
@@ -64,7 +58,7 @@ class DigestSink extends Writable {
   }
 }
 
-class FileTransferrer extends Transferrer {
+class FileTransferrer extends Fugue.Transferrer {
   handle = null;
   spooledByteLength = 0;
 
@@ -101,7 +95,7 @@ class FileTransferrer extends Transferrer {
   }
 }
 
-class FileReader extends DegradedChunkReader {
+class FileReader extends Fugue.DegradedChunkReader {
   static [READER_S.TRANSFERRER_CTOR] = FileTransferrer;
 
   handle = null;
@@ -144,7 +138,7 @@ class FileReader extends DegradedChunkReader {
   }
 }
 
-class SpoolDistributor extends Distributor {
+class SpoolDistributor extends Fugue.Distributor {
   static [DEGRADED_CHUNK_READER_CTOR] = FileReader;
 }
 
@@ -153,7 +147,7 @@ const spoolUpload = async (request, response, state) => {
   const hash = createHash('sha256');
 
   distributor.setTransferrerArgs(state.spool);
-  Options.Tune.MaxStashByteLength(distributor, STASH_LIMIT);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, STASH_LIMIT);
 
   state.distributor = distributor;
 
@@ -176,7 +170,7 @@ const spoolUpload = async (request, response, state) => {
 };
 
 const startServer = async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'readable-stream-distributor-'));
+  const dir = await mkdtemp(join(tmpdir(), 'fugue-'));
   const state = {
     distributor: null,
     failure: null,

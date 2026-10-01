@@ -3,7 +3,7 @@ import {
   DegradedChunkReader,
   SYMBOL,
   Transferrer,
-} from '@produck/readable-stream-distributor';
+} from '@produck/fugue';
 
 const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
 const { _I: READER, _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;

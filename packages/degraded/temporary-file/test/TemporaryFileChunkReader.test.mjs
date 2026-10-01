@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import * as Core from '@produck/readable-stream-distributor';
+import * as Fugue from '@produck/fugue';
 
-import * as TemporaryFile from '@produck/readable-stream-distributor-degraded-temporary-file';
+import * as TemporaryFile from '@produck/fugue-degraded-temporary-file';
 
-const { SYMBOL } = Core;
+const { SYMBOL } = Fugue;
 const { ChunkReader, Transferrer } = TemporaryFile;
 const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
 

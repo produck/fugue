@@ -1,6 +1,6 @@
 # TODO
 
-> 框架层（`@produck/readable-stream-distributor`）的改进候选，以及每条背后
+> 框架层（`@produck/fugue`）的改进候选，以及每条背后
 > 的代价。目的不是把接口变大，是让"介质配错"这件事有边沿可挂。
 
 ## 诊断：缺的是边沿，不是信息
