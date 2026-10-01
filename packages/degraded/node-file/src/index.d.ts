@@ -48,3 +48,5 @@ export declare class FileChunkReader extends Core.DegradedChunkReader {
 
   [READER_I.CLOSE](): Promise<void>;
 }
+
+export { FileChunkReader as ChunkReader, FileTransferrer as Transferrer };

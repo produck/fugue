@@ -13,7 +13,7 @@
       "types": "./src/index.d.ts"
     }
   },
-  "homepage": "https://github.com/produck/node-readable-stream-distributor/tree/main/packages/degraded-node-file#readme",
+  "homepage": "https://github.com/produck/node-readable-stream-distributor/tree/main/packages/degraded/node-file#readme",
   "imports": {
     "#test/*": "./test/*"
   },
@@ -29,7 +29,7 @@
   "main": "./src/index.mjs",
   "name": "@produck/readable-stream-distributor-degraded-node-file",
   "repository": {
-    "directory": "packages/degraded-node-file",
+    "directory": "packages/degraded/node-file",
     "type": "git",
     "url": "git+https://github.com/produck/node-readable-stream-distributor.git"
   },
