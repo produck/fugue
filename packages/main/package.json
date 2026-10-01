@@ -1,6 +1,6 @@
 {
   "bugs": {
-    "url": "https://github.com/produck/node-readable-stream-distributor/issues"
+    "url": "https://github.com/produck/fugue/issues"
   },
   "dependencies": {
     "@produck/argot": "^0.1.2",
@@ -16,7 +16,7 @@
       "types": "./src/index.d.ts"
     }
   },
-  "homepage": "https://github.com/produck/node-readable-stream-distributor/tree/main/packages/main#readme",
+  "homepage": "https://github.com/produck/fugue/tree/main/packages/main#readme",
   "imports": {
     "#test/*": "./test/*"
   },
@@ -34,7 +34,7 @@
   "repository": {
     "directory": "packages/main",
     "type": "git",
-    "url": "git+https://github.com/produck/node-readable-stream-distributor.git"
+    "url": "git+https://github.com/produck/fugue.git"
   },
   "scripts": {
     "produck:coverage": "c8 --reporter=lcov --reporter=html --reporter=text-summary npm test",

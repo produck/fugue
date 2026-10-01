@@ -1018,5 +1018,6 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **下游约定**：核心包一律 `import * as Fugue from '@produck/fugue'`
   （原来的 `Core` 别名退役；本仓的 `test/` 也跟着换，因为测试走的就是
   消费者面）。介质包保留自家别名（`NodeFile` / `TemporaryFile`）。
-- **未动**：git 仓名与三个包的 `repository.url` / `bugs` / `homepage`
-  ——仓还没改名，URL 得跟实际仓库一致；要改仓名再说。
+- **仓名同日跟上**：GitHub 仓库同日改为 `produck/fugue`，于是三个包的
+  `repository.url` / `bugs` / `homepage`、本地 `origin` 与根 README 的标题
+  一起改过来；仓内不再出现旧名。

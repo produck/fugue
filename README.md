@@ -1,4 +1,4 @@
-# node-readable-stream-distributor
+# fugue
 
 > The repository behind `@produck/fugue`.
 
