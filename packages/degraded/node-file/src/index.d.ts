@@ -17,11 +17,14 @@ declare const READER_S: typeof Core.SYMBOL.DEGRADED_CHUNK_READER._S;
  * before destroying.
  */
 export declare class FileTransferrer extends Core.Transferrer {
+  /** The pathname this transferrer was built with. Absolute. */
+  constructor(pathname: string);
+
   /** The absolute file this transferrer writes. */
   readonly pathname: string;
 
   /** Reads the file path out. */
-  static [TRANSFERRER_S.PARSE_ARGUMENTS](args: unknown[]): [string];
+  static [TRANSFERRER_S.PARSE_ARGUMENTS](args: unknown[]): unknown[];
 
   [TRANSFERRER_I.DUMP](stash: Core.ChunkStash): Promise<void>;
 

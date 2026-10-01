@@ -633,8 +633,10 @@ sequenceDiagram
 `@produck/type-error`（参数报文）、`@produck/ow`（抛错出口）、
 `@produck/deep-freeze-enumerable`（符号表冻结）。
 
-文件降级已实现于兄弟包：`node:fs`（打开 / 读写 / 删除）落在那个包里，
-不进平台中立的基类。
+介质实现于兄弟包，不进平台中立的基类：`@produck/readable-stream-
+distributor-degraded-node-file`（`node:fs` 打开 / 读写 / 删除）与建在它之上的
+`@produck/readable-stream-distributor-degraded-temporary-file`
+（`os.tmpdir()` + `node:crypto` 取名）。核心包保持零 `node:` 导入。
 
 ## 终止信号
 
@@ -675,7 +677,8 @@ sequenceDiagram
 关掉并退出，不落字节），那条路走同一个"关并删"，所以"释放先到、dump 后到"
 既不留半截数据也不留空文件。读器只关自己的读句柄（`_I.CLOSE`）。
 代价：`destroy()` 常发生在失败收场（介质写失败、源报错），那时文件同样被删，
-现场不再保留；要留档的宿主须在 `destroy()` 之前自己复制。
+现场不再保留；要留档的宿主须在 `destroy()` 之前自己复制。临时文件版
+（`degraded/temporary-file`）自己取名，清理沿用这一条，不再另立策略。
 
 ## 已知风险与可观测性
 

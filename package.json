@@ -31,6 +31,7 @@
   },
   "workspaces": [
     "packages/main",
-    "packages/degraded/node-file"
+    "packages/degraded/node-file",
+    "packages/degraded/temporary-file"
   ]
 }

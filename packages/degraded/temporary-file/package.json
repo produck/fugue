@@ -1,0 +1,43 @@
+{
+  "bugs": {
+    "url": "https://github.com/produck/node-readable-stream-distributor/issues"
+  },
+  "dependencies": {
+    "@produck/readable-stream-distributor": "^0.0.0",
+    "@produck/readable-stream-distributor-degraded-node-file": "^0.0.0"
+  },
+  "description": "The temporary-file degraded medium for @produck/readable-stream-distributor: it names its own file under the OS temporary directory.",
+  "exports": {
+    ".": {
+      "import": "./src/index.mjs",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "homepage": "https://github.com/produck/node-readable-stream-distributor/tree/main/packages/degraded/temporary-file#readme",
+  "imports": {
+    "#test/*": "./test/*"
+  },
+  "keywords": [
+    "readable-stream",
+    "distributor",
+    "degraded",
+    "spool",
+    "temporary-file",
+    "tmpdir",
+    "node"
+  ],
+  "license": "MIT",
+  "main": "./src/index.mjs",
+  "name": "@produck/readable-stream-distributor-degraded-temporary-file",
+  "repository": {
+    "directory": "packages/degraded/temporary-file",
+    "type": "git",
+    "url": "git+https://github.com/produck/node-readable-stream-distributor.git"
+  },
+  "scripts": {
+    "produck:coverage": "c8 --reporter=lcov --reporter=html --reporter=text-summary npm test",
+    "test": "node test/index.mjs"
+  },
+  "type": "module",
+  "version": "0.0.0"
+}

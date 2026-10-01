@@ -205,6 +205,10 @@ Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
   medium created is removed.
 - Its own manual covers the record format and the two classes.
 
+A host with no opinion about the path can use
+`@produck/readable-stream-distributor-degraded-temporary-file` instead:
+the same medium, naming its own file under the OS temporary directory.
+
 A file is not the answer for every host: [The medium](#the-medium) below
 is the contract any other one has to honour.
 

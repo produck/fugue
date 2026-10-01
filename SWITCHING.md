@@ -217,8 +217,10 @@ Promise"这一事实：
   `@produck/readable-stream-distributor-degraded-node-file`；文件路径通过
   **配置方法**给出（`setTransferrerArgs(path)`，无默认），属子类职责，非
   分发器维护；**释放即删**（只删本介质自己开过句柄的那个文件），宿主不再
-  负责清理，要留档得在 `destroy()` 之前自己复制。浏览器分支
-  （IndexedDB / OPFS）将来同挂其下。
+  负责清理，要留档得在 `destroy()` 之前自己复制。**临时文件版已落地**
+  （`@produck/readable-stream-distributor-degraded-temporary-file`）：它建在上
+  面，自己取名（`os.tmpdir()` + `node:crypto` 随机段），其余全继承。浏览器
+  分支（IndexedDB / OPFS）将来同挂其下。
 - **动态替换降级 reader 类**：分发器提供"设置降级 ChunkReader 类"的
   方法，可动态替换存储降级阶段使用的 reader 子类（"降级策略读取器
   机制"）。

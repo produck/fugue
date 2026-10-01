@@ -99,5 +99,6 @@
 4. **B：不做**；**C：撤回**——平台已自带 `timeStamp`，只需在文档里补一句
    口径（相对进程起点、非 epoch）。
 
-以上都属核心包（`packages/main`），与本仓的 `packages/degraded/node-file`
-无关——后者遵守现状即可，除非 A2 落地（那时释放策略可以按失败态分支）。
+以上都属核心包（`packages/main`），与本仓的两个介质包
+（`packages/degraded/*`）无关——后者遵守现状即可，除非 A2 落地（那时释放
+策略可以按失败态分支）。

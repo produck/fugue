@@ -980,3 +980,24 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 > 不稳定、演进中的决策先在此按时间（`### YYYY-MM-DD`）追加，保留
 > 来龙去脉；一旦收敛为确定结论，不定期执行"结论压缩"——并入上方
 > 对应主题的"当前有效结论"，并从本节移除。
+
+### 2026-10-01
+
+新增第二个介质包 `packages/degraded/temporary-file`
+（`@produck/readable-stream-distributor-degraded-temporary-file`），建在
+`degraded/node-file` 之上——
+
+- **继承不重写**：`TemporaryFileTransferrer extends FileTransferrer` 只在
+  构造器里现取名，并把 `_S.PARSE_ARGUMENTS` 答成空数组；
+  `TemporaryFileChunkReader` 只把 `_S.TRANSFERRER_CTOR` 的 getter 指向自家
+  写侧。帧格式、显式偏移、"释放即删" 全是父类的。
+- **取名**：`os.tmpdir()` + `<uuid>.tmp`（`node:crypto` 的 `randomUUID`），
+  并发不撞名；不建私有目录，于是释放后一点痕迹不留（文件由父类的释放删掉）。
+- **参数与构造器对应（2026-10-01 定）**：构造器不收参数 ⇒ 钩子答 `[]`。
+  于是**宿王不必**调 `setTransferrerArgs()`（框架给 `TRANSFERRER_ARGS` 的初值
+  就是 `[]`）；调了也照旧。钩子**必须是方法**：框架在 `Abstract.mjs:137`
+  是 `…[SYM](args)`，写成 getter 返回数组会当场撞 `is not a function`
+  （实测）。反过来说，这个包不提供"换目录/换前缀"的口子——要就自己派生。
+- **入口给出通用对**：`ChunkReader` / `Transferrer` 两个别名与
+  `degraded/<kind>` 布局配套（`node-file` 也补了），换介质只换包名。
+- **依赖方向**：`temporary-file` → `node-file` → `main`，不反向。
