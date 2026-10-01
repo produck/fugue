@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Distributor, Options, SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   drain,
@@ -12,7 +12,7 @@ import {
   TestDistributor,
 } from '#test/baseline.mjs';
 
-const { _I: READER } = SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: READER } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 const EXPECTED = {
   UNIMPLEMENTED: { message: /must be implemented in the subclass/ },
@@ -34,7 +34,7 @@ describe('.fork()', () => {
   });
 
   it('should report the missing DEGRADED_CHUNK_READER_CTOR', () => {
-    class Unfinished extends Distributor {}
+    class Unfinished extends Fugue.Distributor {}
 
     const unfinished = new Unfinished(makeSource());
     const attempt = () => unfinished.fork();
@@ -46,7 +46,7 @@ describe('.fork()', () => {
     const distributor = new TestDistributor(makeSource(['a']));
     const first = distributor.fork().getReader();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await first.read();
     assert.equal(distributor.degraded, true);
@@ -84,8 +84,8 @@ describe('.fork()', () => {
 
     distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
-    Options.Asset.noRetry(distributor);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Asset.noRetry(distributor);
 
     await assert.rejects(distributor.fork().getReader().read(), cause);
     await settle();

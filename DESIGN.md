@@ -633,10 +633,10 @@ sequenceDiagram
 `@produck/type-error`（参数报文）、`@produck/ow`（抛错出口）、
 `@produck/deep-freeze-enumerable`（符号表冻结）。
 
-介质实现于兄弟包，不进平台中立的基类：`@produck/readable-stream-
-distributor-degraded-node-file`（`node:fs` 打开 / 读写 / 删除）与建在它之上的
-`@produck/fugue-degraded-temporary-file`
-（`os.tmpdir()` + `node:crypto` 取名）。核心包保持零 `node:` 导入。
+介质实现于兄弟包，不进平台中立的基类：`@produck/fugue-degraded-node-file`
+（`node:fs` 打开 / 读写 / 删除）与建在它之上的
+`@produck/fugue-degraded-temporary-file`（`os.tmpdir()` + 默认命名器
+`fugue-<uuid>.tmp`，子类可换）。核心包保持零 `node:` 导入。
 
 ## 终止信号
 

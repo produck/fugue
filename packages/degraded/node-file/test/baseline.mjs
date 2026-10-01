@@ -6,11 +6,10 @@ import * as Fugue from '@produck/fugue';
 
 import * as NodeFile from '@produck/fugue-degraded-node-file';
 
-const { Distributor, SYMBOL } = Fugue;
 const { FileChunkReader, FileTransferrer } = NodeFile;
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
-const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
+const { _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 export const makeSource = (chunks = []) => {
   let pulled = 0;
@@ -71,7 +70,7 @@ export const makeFamily = (bases = {}) => {
     }
   }
 
-  class FamilyDistributor extends Distributor {}
+  class FamilyDistributor extends Fugue.Distributor {}
 
   FamilyDistributor[DEGRADED_CHUNK_READER_CTOR] = Reader;
 

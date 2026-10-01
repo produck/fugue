@@ -1,11 +1,10 @@
 import * as fs from 'node:fs';
 
-import * as Distributor from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import * as Frame from './Frame.mjs';
 import * as Parser from './Parser.mjs';
 
-const { SYMBOL, Transferrer } = Distributor;
 const I_CLOSE = Symbol('.#close()');
 const REMOVE_OPTIONS = { force: true, maxRetries: 5, retryDelay: 50 };
 
@@ -17,11 +16,11 @@ const frameOf = (chunk) => {
   return Buffer.concat([header, chunk]);
 };
 
-export class FileTransferrer extends Transferrer {
+export class FileTransferrer extends Fugue.Transferrer {
   handle = null;
   writtenByteLength = 0;
 
-  static [SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args) {
+  static [Fugue.SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args) {
     return [Parser.absolutePathname(args[0], 'args[0] as pathname')];
   }
 
@@ -30,7 +29,7 @@ export class FileTransferrer extends Transferrer {
     this.pathname = Parser.absolutePathname(pathname, 'args[0] as pathname');
   }
 
-  async [SYMBOL.TRANSFERRER._I.DUMP](stash) {
+  async [Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash) {
     const buffer = Buffer.concat([...stash.chunks()].map(frameOf));
 
     if (this.handle === null) {
@@ -45,7 +44,7 @@ export class FileTransferrer extends Transferrer {
     this.writtenByteLength = buffer.byteLength;
   }
 
-  async [SYMBOL.TRANSFERRER._I.WRITE](chunk) {
+  async [Fugue.SYMBOL.TRANSFERRER._I.WRITE](chunk) {
     const buffer = frameOf(chunk);
     const length = buffer.byteLength;
     const position = this.writtenByteLength;
@@ -54,7 +53,7 @@ export class FileTransferrer extends Transferrer {
     this.writtenByteLength += buffer.byteLength;
   }
 
-  async [SYMBOL.TRANSFERRER._I.DROP]() {
+  async [Fugue.SYMBOL.TRANSFERRER._I.DROP]() {
     await this[I_CLOSE]();
   }
 

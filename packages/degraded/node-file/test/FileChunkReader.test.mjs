@@ -5,9 +5,8 @@ import * as Fugue from '@produck/fugue';
 
 import * as NodeFile from '@produck/fugue-degraded-node-file';
 
-const { SYMBOL } = Fugue;
 const { FileChunkReader, FileTransferrer } = NodeFile;
-const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
+const { _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 describe('FileChunkReader', () => {
   it('should read back from the file transferrer', () => {

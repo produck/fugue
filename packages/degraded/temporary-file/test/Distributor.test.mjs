@@ -6,13 +6,11 @@ import * as Fugue from '@produck/fugue';
 
 import { drain, makeFamily, makeSource } from '#test/baseline.mjs';
 
-const { Options } = Fugue;
-
 const makeSpooling = (chunks) => {
   const family = makeFamily();
   const distributor = new family.Distributor(makeSource(chunks));
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   return { distributor, family };
 };
@@ -46,7 +44,7 @@ describe('Distributor', () => {
       const distributor = new family.Distributor(makeSource(['a']));
 
       distributor.setTransferrerArgs();
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       assert.deepEqual(await drain(distributor.fork()), ['a']);
 

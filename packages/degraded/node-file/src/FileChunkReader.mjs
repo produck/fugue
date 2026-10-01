@@ -1,21 +1,19 @@
 import * as fs from 'node:fs';
 
-import * as Distributor from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import { FileTransferrer } from './FileTransferrer.mjs';
 import * as Frame from './Frame.mjs';
 
-const { DegradedChunkReader, SYMBOL } = Distributor;
-
-export class FileChunkReader extends DegradedChunkReader {
-  static get [SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]() {
+export class FileChunkReader extends Fugue.DegradedChunkReader {
+  static get [Fugue.SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]() {
     return FileTransferrer;
   }
 
   handle = null;
   cursor = 0;
 
-  async [SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]() {
+  async [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]() {
     const handle = await fs.promises.open(this.transferrer.pathname, 'r');
 
     // The driver stops retrying once the reader is closed, so an open lands on
@@ -30,7 +28,7 @@ export class FileChunkReader extends DegradedChunkReader {
     this.handle = handle;
   }
 
-  async [SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]() {
+  async [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]() {
     const byteLength = await Frame.readHeader(this.handle, this.cursor);
 
     // The position gate admits a read back only below the watermark, so the
@@ -46,7 +44,7 @@ export class FileChunkReader extends DegradedChunkReader {
     return true;
   }
 
-  async [SYMBOL.DEGRADED_CHUNK_READER._I.READ]() {
+  async [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.READ]() {
     const byteLength = await Frame.readHeader(this.handle, this.cursor);
     const result = { done: false, value: undefined };
 
@@ -64,7 +62,7 @@ export class FileChunkReader extends DegradedChunkReader {
     return result;
   }
 
-  async [SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]() {
+  async [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]() {
     if (this.handle !== null) {
       await this.handle.close();
     }

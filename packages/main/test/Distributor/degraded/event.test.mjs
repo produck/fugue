@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 
-import { Options } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import { makeSource, TestDistributor } from '#test/baseline.mjs';
 
@@ -14,7 +14,7 @@ it('should dispatch the degrade event on the crossing pull', async () => {
     details.push(event.detail);
   });
 
-  Options.Tune.MaxStashByteLength(distributor, 1);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
 
   await reader.read();
   assert.deepEqual(details, []);
@@ -33,7 +33,7 @@ it('should dispatch the degrade event with degraded already true', async () => {
     seen.push(distributor.degraded);
   });
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   await reader.read();
 
@@ -47,7 +47,7 @@ it('should not dispatch the degrade event again on later pulls', async () => {
 
   distributor.addEventListener('degrade', () => count++);
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   await reader.read();
   await reader.read();

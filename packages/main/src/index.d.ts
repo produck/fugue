@@ -382,18 +382,14 @@ export type OptionValue<Value> = Value | ((options: OptionGetters) => Value);
 
 export declare namespace Options {
   type Tune = {
-    [Name in keyof OptionDefinitions as `tune${Name}`]: <
-      Chunk extends Uint8Array,
-    >(
+    [Name in keyof OptionDefinitions]: <Chunk extends Uint8Array>(
       distributor: Distributor<Chunk>,
       value: OptionValue<OptionDefinitions[Name]>,
     ) => void;
   };
 
   type Get = {
-    [Name in keyof OptionDefinitions as `get${Name}`]: <
-      Chunk extends Uint8Array,
-    >(
+    [Name in keyof OptionDefinitions]: <Chunk extends Uint8Array>(
       distributor: Distributor<Chunk>,
     ) => OptionDefinitions[Name];
   };

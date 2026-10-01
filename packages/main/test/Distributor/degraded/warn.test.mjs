@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 
-import { Options, SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   makeFamily,
@@ -11,8 +11,8 @@ import {
   TestTransferrer,
 } from '#test/baseline.mjs';
 
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
-const { _I: READER } = SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
+const { _I: READER } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 it('should dispatch warn(transferrer-dump-failed) when the dump fails', async () => {
   const refused = new Error('the medium refuses the dump');
@@ -30,8 +30,8 @@ it('should dispatch warn(transferrer-dump-failed) when the dump fails', async ()
   const onWarn = (event) => warns.push(event.detail);
 
   distributor.addEventListener('warn', onWarn);
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Asset.noRetry(distributor);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Asset.noRetry(distributor);
 
   await reader.read();
   await settle();
@@ -59,9 +59,9 @@ it('should dispatch warn(transferrer-write-failed) when the write fails', async 
   const warns = [];
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-  Options.Asset.noRetry(distributor);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+  Fugue.Options.Asset.noRetry(distributor);
 
   await reader.read();
 
@@ -102,9 +102,9 @@ it('should dispatch warn(transferrer-dump-failed) once per attempt', async () =>
   const warns = [];
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxDumpRetryCount(distributor, 1);
-  Options.Tune.DumpRetryInterval(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
+  Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
 
   await reading.read();
   await retried;
@@ -135,8 +135,8 @@ it('should dispatch warn(transferrer-backlog) once over the limit', async () => 
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxBacklogWarningByteLength(distributor, 3);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 3);
 
   await reading.read();
   await reading.read();
@@ -163,8 +163,8 @@ it('should dispatch warn(degraded-reader-initialize-failed) on the switch', asyn
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Asset.noRetry(distributor);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Asset.noRetry(distributor);
 
   await assert.rejects(reader.read(), cause);
   await settle();
@@ -194,9 +194,9 @@ it('should dispatch warn(degraded-reader-initialize-failed) once per attempt', a
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxInitializeRetryCount(distributor, 1);
-  Options.Tune.InitializeRetryInterval(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxInitializeRetryCount(distributor, 1);
+  Fugue.Options.Tune.InitializeRetryInterval(distributor, 0);
 
   await assert.rejects(reading.read(), cause);
 
@@ -232,9 +232,9 @@ it('should land the initialize when the medium answers the retry', async () => {
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxInitializeRetryCount(distributor, 1);
-  Options.Tune.InitializeRetryInterval(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxInitializeRetryCount(distributor, 1);
+  Fugue.Options.Tune.InitializeRetryInterval(distributor, 0);
 
   assert.equal((await reading.read()).value.toString(), 'a');
   assert.equal(calls, 2);
@@ -266,15 +266,15 @@ it('should stop retrying the initialize once the reader is released', async () =
 
   reading.read().catch(() => {});
 
-  Options.Tune.MaxStashByteLength(distributor, 0);
-  Options.Tune.MaxInitializeRetryCount(distributor, Infinity);
-  Options.Tune.InitializeRetryInterval(distributor, 100);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxInitializeRetryCount(distributor, Infinity);
+  Fugue.Options.Tune.InitializeRetryInterval(distributor, 100);
 
   await started;
   await distributor.destroy();
 
   const atRelease = calls;
-  const window = Options.Get.InitializeRetryInterval(distributor) * 1.5;
+  const window = Fugue.Options.Get.InitializeRetryInterval(distributor) * 1.5;
 
   await new Promise((resolve) => setTimeout(resolve, window));
 

@@ -4,7 +4,8 @@
   },
   "dependencies": {
     "@produck/fugue": "^0.0.0",
-    "@produck/fugue-degraded-node-file": "^0.0.0"
+    "@produck/fugue-degraded-node-file": "^0.0.0",
+    "@produck/type-error": "^0.1.7"
   },
   "description": "The temporary-file degraded medium for @produck/fugue: it names its own file under the OS temporary directory.",
   "exports": {

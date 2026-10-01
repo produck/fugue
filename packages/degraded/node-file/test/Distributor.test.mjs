@@ -15,9 +15,8 @@ import {
   removeTemporaryDirectory,
 } from '#test/baseline.mjs';
 
-const { Options, SYMBOL } = Fugue;
 const { FileTransferrer } = NodeFile;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const FRAME_HEADER = 4;
 const EXPECTED = {
@@ -30,7 +29,7 @@ const makeSpooling = (path, chunks) => {
   const distributor = new family.Distributor(makeSource(chunks));
 
   distributor.setTransferrerArgs(path);
-  Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
   return { distributor, family };
 };
@@ -144,7 +143,7 @@ describe('Distributor', () => {
       const family = makeFamily();
       const distributor = new family.Distributor(makeSource(['a']));
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await assert.rejects(drain(distributor.fork()), EXPECTED.TYPED);
     });
@@ -192,7 +191,7 @@ describe('Distributor', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
 
       distributor.setTransferrerArgs(path);
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       const degraded = new Promise((resolve) => {
         distributor.addEventListener('degrade', resolve);

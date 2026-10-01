@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   makeFamily,
@@ -23,7 +23,7 @@ describe('Transferrer', () => {
       const forked = distributor.fork();
 
       distributor.setTransferrerArgs('x', 'y');
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -57,7 +57,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -84,7 +84,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -124,8 +124,8 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b', 'c']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Asset.noRetry(distributor);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Asset.noRetry(distributor);
 
       await reading.read();
       await reading.read();
@@ -168,9 +168,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxDumpRetryCount(distributor, 1);
-      Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -209,9 +209,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxDumpRetryCount(distributor, 1);
-      Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -248,9 +248,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxDumpRetryCount(distributor, Infinity);
-      Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxDumpRetryCount(distributor, Infinity);
+      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -299,10 +299,10 @@ describe('Transferrer', () => {
       const warns = [];
 
       distributor.addEventListener('warn', (event) => warns.push(event.detail));
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Options.Tune.MaxDrainRetryCount(distributor, 1);
-      Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
+      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -349,10 +349,10 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Options.Tune.MaxDrainRetryCount(distributor, 1);
-      Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
+      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
 
       await reading.read();
       reading.read().catch(() => {});
@@ -389,10 +389,10 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
-      Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Options.Tune.MaxDrainRetryCount(distributor, Infinity);
-      Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+      Fugue.Options.Tune.MaxDrainRetryCount(distributor, Infinity);
+      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
 
       await reading.read();
       reading.read().catch(() => {});
@@ -423,7 +423,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -463,7 +463,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       forked.getReader().read();
 
@@ -493,12 +493,12 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const reading = distributor.fork().getReader();
 
-      Options.Tune.DegradeOnStashFullAndDone(distributor, true);
-      Options.Tune.MaxStashByteLength(distributor, 1);
+      Fugue.Options.Tune.DegradeOnStashFullAndDone(distributor, true);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
 
       await reading.read();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -511,7 +511,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -531,7 +531,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -555,7 +555,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -581,7 +581,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -604,7 +604,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 

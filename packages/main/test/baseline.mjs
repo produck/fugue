@@ -1,13 +1,8 @@
-import {
-  Distributor,
-  DegradedChunkReader,
-  SYMBOL,
-  Transferrer,
-} from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
-const { DEGRADED_CHUNK_READER_CTOR } = SYMBOL.DISTRIBUTOR._S;
-const { _I: READER, _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
+const { _I: READER, _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const MEDIUM = Symbol('.#medium');
 const CURSOR = Symbol('.#cursor');
@@ -43,7 +38,7 @@ export const settle = async (turns = 6) => {
   }
 };
 
-export class TestTransferrer extends Transferrer {
+export class TestTransferrer extends Fugue.Transferrer {
   [MEDIUM] = [];
 
   constructor(...args) {
@@ -66,7 +61,7 @@ export class TestTransferrer extends Transferrer {
   }
 }
 
-export class TestDegradedChunkReader extends DegradedChunkReader {
+export class TestDegradedChunkReader extends Fugue.DegradedChunkReader {
   static [READER_S.TRANSFERRER_CTOR] = TestTransferrer;
 
   [CURSOR] = 0;
@@ -98,7 +93,7 @@ export class TestDegradedChunkReader extends DegradedChunkReader {
   [READER.CLOSE]() {}
 }
 
-export class TestDistributor extends Distributor {
+export class TestDistributor extends Fugue.Distributor {
   static [DEGRADED_CHUNK_READER_CTOR] = TestDegradedChunkReader;
 }
 
@@ -123,7 +118,7 @@ export const makeFamily = (bases = {}) => {
 
   Reader[READER_S.TRANSFERRER_CTOR] = Medium;
 
-  class FamilyDistributor extends Distributor {}
+  class FamilyDistributor extends Fugue.Distributor {}
 
   FamilyDistributor[DEGRADED_CHUNK_READER_CTOR] = Reader;
 

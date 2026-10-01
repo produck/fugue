@@ -5,9 +5,8 @@ import * as Fugue from '@produck/fugue';
 
 import * as TemporaryFile from '@produck/fugue-degraded-temporary-file';
 
-const { SYMBOL } = Fugue;
 const { ChunkReader, Transferrer } = TemporaryFile;
-const { _S: READER_S } = SYMBOL.DEGRADED_CHUNK_READER;
+const { _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 describe('TemporaryFileChunkReader', () => {
   it('should read back from the temporary file transferrer', () => {

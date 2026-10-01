@@ -12,7 +12,17 @@ declare const READER_S: typeof Fugue.SYMBOL.DEGRADED_CHUNK_READER._S;
  * under `os.tmpdir()`, and answers the argument hook with none.
  */
 export declare class TemporaryFileTransferrer extends File.FileTransferrer {
-  /** Names the file. Nothing is taken from the host. */
+  /**
+   * Names the file. The default is `fugue-<uuid>.tmp`; a subclass overrides
+   * this to name its own.
+   */
+  static generateFileName(): string;
+
+  /**
+   * Names the file through `generateFileName()`, read from the class being
+   * built. The name must be a relative path that stays under the temporary
+   * directory: not empty, not absolute, nothing climbing out with `..`.
+   */
   constructor();
 
   /** Answers no arguments, so `setTransferrerArgs()` is optional. */

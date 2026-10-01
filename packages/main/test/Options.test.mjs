@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import { drain, makeDistributor, settle } from '#test/baseline.mjs';
 
-const { Tune, Get, Asset } = Options;
+const { Tune, Get, Asset } = Fugue.Options;
 
 const GIB = (1 << 10) ** 3;
 const LIMIT = Number.MAX_SAFE_INTEGER;

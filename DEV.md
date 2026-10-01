@@ -991,13 +991,21 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   构造器里现取名，并把 `_S.PARSE_ARGUMENTS` 答成空数组；
   `TemporaryFileChunkReader` 只把 `_S.TRANSFERRER_CTOR` 的 getter 指向自家
   写侧。帧格式、显式偏移、"释放即删" 全是父类的。
-- **取名**：`os.tmpdir()` + `<uuid>.tmp`（`node:crypto` 的 `randomUUID`），
-  并发不撞名；不建私有目录，于是释放后一点痕迹不留（文件由父类的释放删掉）。
+- **取名**：静态 `generateFileName()`，默认 `fugue-<uuid>.tmp`（`os.tmpdir()` +
+  全局 `crypto` 的 `randomUUID`）——并发不撞名，名字里还带着产品名；不建私有
+  目录，于是释放后一点痕迹不留（文件由父类的释放删掉）。构造器读的是
+  `new.target.generateFileName()`，所以子类重载命名器即生效，不必另给参数。
+- **命名器要过闸**：命名器的返回值必须是**留在临时目录内的相对路径**——非空、
+  非绝对、不靠 `..` 爬出去（把拼接结果拿 `path.relative` 量一次，见
+  `temporaryPathname()`）；否则
+  `ThrowTypeError('generateFileName() as name', 'relative path')`。
+- **别处放盘请用 node-file**：临时介质不让宿主借名字把 spool 放到临时目录
+  之外，也就堵掉了"绕开临时目录机制"这条路。
 - **参数与构造器对应（2026-10-01 定）**：构造器不收参数 ⇒ 钩子答 `[]`。
   于是**宿王不必**调 `setTransferrerArgs()`（框架给 `TRANSFERRER_ARGS` 的初值
   就是 `[]`）；调了也照旧。钩子**必须是方法**：框架在 `Abstract.mjs:137`
   是 `…[SYM](args)`，写成 getter 返回数组会当场撞 `is not a function`
-  （实测）。反过来说，这个包不提供"换目录/换前缀"的口子——要就自己派生。
+  （实测）。换名字有口子（`generateFileName()`）；换目录没有——要就自己派生。
 - **入口给出通用对**：`ChunkReader` / `Transferrer` 两个别名与
   `degraded/<kind>` 布局配套（`node-file` 也补了），换介质只换包名。
 - **依赖方向**：`temporary-file` → `node-file` → `main`，不反向。
@@ -1021,3 +1029,28 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **仓名同日跟上**：GitHub 仓库同日改为 `produck/fugue`，于是三个包的
   `repository.url` / `bugs` / `homepage`、本地 `origin` 与根 README 的标题
   一起改过来；仓内不再出现旧名。
+
+**核心包一律走 `Fugue` 命名空间**（同一天）：
+
+- 全仓（`src/`、`test/`、示例、README）对 `@produck/fugue` 只写
+  `import * as Fugue from '@produck/fugue'`，用到的成员一律写全路径——
+  `Fugue.Distributor`、`Fugue.Options.Tune.MaxStashByteLength(…)`、
+  `Fugue.SYMBOL.TRANSFERRER._I.DUMP`。理由是**下游抄的就是这一段**：
+  示例、测试、手册读起来要和使用现场一模一样。
+- **唯一的解构例外是符号槽**：`const { _I: X } = Fugue.SYMBOL.<家族>;`
+  保留，因为契约就是让介质在自己的模块顶部解构一次。
+- **介质包自家入口不套 `Fugue`**：自家包按自己的名字导入
+  （`import * as NodeFile from '@produck/fugue-degraded-node-file'`），
+  或按需具名导入。
+- 两个误伤处一并纠回：`DESIGN.md` 里被换行折断的旧包名，以及
+  `fork.test.mjs` 中被误加重前缀的正则字面量——**期望报文里的类名**
+  （`/Distributor has been terminated/`）是运行时字符串，不是引用。
+
+**`Options.Tune` / `Options.Get` 的声明对齐运行时**（同日，探针发现）：
+
+- 运行时的键就是选项名本身（`Accessor.mjs` 里 `_Tune[name]` / `_Get[name]`；
+  `tune*` / `get*` 只是函数名），而 `index.d.ts` 把键映射成
+  `` `tune${Name}` `` / `` `get${Name}` ``——TS 用户照 README 写会编译不过。
+- 两处映射改成裸 `Name`，消费者探针（`tsc --noEmit`）正反验证通过：
+  `Tune.MaxStashByteLength(distributor, value)`、
+  `Get.MaxStashByteLength(distributor)`、`Asset.noRetry(distributor)`。

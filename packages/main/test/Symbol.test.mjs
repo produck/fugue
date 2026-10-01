@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 const OPENED = {
   DISTRIBUTOR: {
@@ -19,10 +19,13 @@ const OPENED = {
 
 describe('SYMBOL', () => {
   it('should open _I and _S of every family, and nothing else', () => {
-    assert.deepEqual(Object.keys(SYMBOL).sort(), Object.keys(OPENED).sort());
+    assert.deepEqual(
+      Object.keys(Fugue.SYMBOL).sort(),
+      Object.keys(OPENED).sort(),
+    );
 
     for (const [family, layers] of Object.entries(OPENED)) {
-      const opened = SYMBOL[family];
+      const opened = Fugue.SYMBOL[family];
       const familyKeys = Object.keys(opened).sort();
 
       assert.deepEqual(familyKeys, Object.keys(layers).sort(), family);

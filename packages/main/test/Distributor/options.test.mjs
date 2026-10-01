@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import { makeSource, TestDistributor } from '#test/baseline.mjs';
 
@@ -38,7 +38,7 @@ describe('.options', () => {
   it('should answer what Tune wrote', () => {
     const distributor = new TestDistributor(makeSource());
 
-    Options.Tune.MaxStashByteLength(distributor, 4);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 4);
 
     assert.equal(distributor.options.MaxStashByteLength, 4);
   });

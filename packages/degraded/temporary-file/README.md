@@ -42,8 +42,9 @@ const copy = distributor.fork();
 
 - Nothing to configure: the medium takes no transferrer arguments, so there
   is no `setTransferrerArgs()` call to make.
-- The path is `os.tmpdir()` plus `<uuid>.tmp`, picked when the medium is
-  built, so concurrent distributors never collide. The medium's `pathname`
+- The path is `os.tmpdir()` plus what the class answers from
+  `generateFileName()`: `fugue-<uuid>.tmp` by default, picked when the medium
+  is built, so concurrent distributors never collide. The medium's `pathname`
   tells you which one it got.
 - Nothing is written until the stash crosses `MaxStashByteLength`.
 - `destroy()` releases the medium: the handle is closed and the file is
@@ -52,18 +53,33 @@ const copy = distributor.fork();
 ## The two classes
 
 - `TemporaryFileTransferrer` — the write side: a `FileTransferrer` whose
-  constructor names its own file, and whose argument hook answers no
-  arguments.
+  constructor names its own file through `generateFileName()`, and whose
+  argument hook answers no arguments.
 - `TemporaryFileChunkReader` — the read side, one instance per copy.
 
 Both are also exported as `ChunkReader` and `Transferrer` — the pair every
 `degraded/<kind>` package answers.
 
+To name the file differently, override the namer. The constructor reads it
+from the class being built, so a subclass needs nothing else. The answer
+must be a relative path that stays under the temporary directory — not
+empty, not absolute, not climbing out with `..` — or the medium refuses it:
+
+```js
+import { Transferrer } from '@produck/fugue-degraded-temporary-file';
+
+class ArchivedTransferrer extends Transferrer {
+  static generateFileName() {
+    return `archive-${crypto.randomUUID()}.spool`;
+  }
+}
+```
+
 ## Scope
 
-Node only: `os.tmpdir()` and `node:crypto` pick the name, `node:fs` writes
-the file. A host that wants the spool where it chose, or wants to keep it,
-should use the sibling instead:
+Node only: `os.tmpdir()` and `node:crypto` pick the default name,
+`node:fs` writes the file. A host that wants the spool outside the
+temporary directory, or wants to keep it, should use the sibling instead:
 `@produck/fugue-degraded-node-file`.
 
 ## License

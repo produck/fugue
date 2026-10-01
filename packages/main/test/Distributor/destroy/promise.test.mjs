@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options, SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   makeFamily,
@@ -12,8 +12,8 @@ import {
   TestTransferrer,
 } from '#test/baseline.mjs';
 
-const { _I: READER } = SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { _I: READER } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const EXPECTED = {
   ABORTED: {
@@ -43,7 +43,7 @@ describe('>promise', () => {
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
     await reader.read();
 
     const medium = family.created.at(-1);
@@ -74,7 +74,7 @@ describe('>promise', () => {
     const reader = distributor.fork().getReader();
     const reading = reader.read();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await settle();
     await distributor.destroy();
@@ -132,8 +132,8 @@ describe('>promise', () => {
 
     assert.equal((await reader.read()).value.toString(), 'a');
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
-    Options.Tune.DegradeOnStashFullAndDone(distributor, true);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.DegradeOnStashFullAndDone(distributor, true);
 
     const aborted = reader.read().catch((r) => r);
 
@@ -164,7 +164,7 @@ describe('>promise', () => {
 
     distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await distributor.fork().getReader().read();
     assert.equal(distributor.degraded, true);
@@ -194,7 +194,7 @@ describe('>promise', () => {
 
     distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await distributor.fork().getReader().read();
     await distributor.destroy();

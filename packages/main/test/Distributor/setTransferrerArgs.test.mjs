@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options, SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   makeFamily,
@@ -10,7 +10,7 @@ import {
   TestTransferrer,
 } from '#test/baseline.mjs';
 
-const { _S: TRANSFERRER_S } = SYMBOL.TRANSFERRER;
+const { _S: TRANSFERRER_S } = Fugue.SYMBOL.TRANSFERRER;
 
 const EXPECTED = {
   CONSUMED: { message: /Transferrer args have been consumed/ },
@@ -33,7 +33,7 @@ describe('.setTransferrerArgs()', () => {
     const reader = distributor.fork().getReader();
 
     distributor.setTransferrerArgs('x', 'y');
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -47,7 +47,7 @@ describe('.setTransferrerArgs()', () => {
     const reader = distributor.fork().getReader();
 
     distributor.setTransferrerArgs('x', 'y');
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -64,7 +64,7 @@ describe('.setTransferrerArgs()', () => {
 
     assert.equal(family.created.length, 0);
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -75,7 +75,7 @@ describe('.setTransferrerArgs()', () => {
     const distributor = new TestDistributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
     await reader.read();
 

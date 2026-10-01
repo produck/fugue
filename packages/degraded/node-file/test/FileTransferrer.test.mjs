@@ -15,9 +15,8 @@ import {
   removeTemporaryDirectory,
 } from '#test/baseline.mjs';
 
-const { Options, SYMBOL } = Fugue;
 const { FileTransferrer } = NodeFile;
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const FRAME_HEADER = 4;
 
@@ -41,7 +40,7 @@ describe('FileTransferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
 
       distributor.setTransferrerArgs(path);
-      Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
 
       assert.deepEqual(await drain(distributor.fork()), ['a']);
 
@@ -89,9 +88,9 @@ describe('FileTransferrer', () => {
     const distributor = new family.Distributor(makeSource(['a', 'b']));
 
     distributor.setTransferrerArgs(path);
-    Options.Tune.MaxStashByteLength(distributor, 0);
-    Options.Tune.MaxDrainRetryCount(distributor, 1);
-    Options.Tune.DrainRetryInterval(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
+    Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
 
     assert.deepEqual(await drain(distributor.fork()), ['a', 'b']);
 

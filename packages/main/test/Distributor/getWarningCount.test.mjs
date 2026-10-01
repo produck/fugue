@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Options, SYMBOL } from '@produck/fugue';
+import * as Fugue from '@produck/fugue';
 
 import {
   makeDistributor,
@@ -11,7 +11,7 @@ import {
   TestTransferrer,
 } from '#test/baseline.mjs';
 
-const { _I: TRANSFERRER } = SYMBOL.TRANSFERRER;
+const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
 
 const EXPECTED = {
   NOT_A_CODE: {
@@ -32,8 +32,8 @@ describe('.getWarningCount()', () => {
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
-    Options.Asset.noRetry(distributor);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Asset.noRetry(distributor);
 
     await reader.read().catch(() => {});
     await settle();
@@ -67,9 +67,9 @@ describe('.getWarningCount()', () => {
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Options.Tune.MaxStashByteLength(distributor, 0);
-    Options.Tune.MaxDumpRetryCount(distributor, 1);
-    Options.Tune.DumpRetryInterval(distributor, 0);
+    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
+    Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
 
     const reading = reader.read().catch(() => {});
 
