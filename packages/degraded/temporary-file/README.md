@@ -62,8 +62,9 @@ Both are also exported as `ChunkReader` and `Transferrer` — the pair every
 
 To name the file differently, override the namer. The constructor reads it
 from the class being built, so a subclass needs nothing else. The answer
-must be a relative path that stays under the temporary directory — not
-empty, not absolute, not climbing out with `..` — or the medium refuses it:
+must be a relative path that names something inside the temporary
+directory — not absolute, not climbing out with `..`, and not the directory
+itself — or the medium refuses it:
 
 ```js
 import { Transferrer } from '@produck/fugue-degraded-temporary-file';

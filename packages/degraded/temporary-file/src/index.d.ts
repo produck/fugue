@@ -21,7 +21,8 @@ export declare class TemporaryFileTransferrer extends File.FileTransferrer {
   /**
    * Names the file through `generateFileName()`, read from the class being
    * built. The name must be a relative path that stays under the temporary
-   * directory: not empty, not absolute, nothing climbing out with `..`.
+   * directory: not absolute, nothing climbing out with `..`, and not the
+   * directory itself.
    */
   constructor();
 

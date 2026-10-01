@@ -13,9 +13,14 @@ const temporaryPathname = (name) => {
   const baseTemporaryPathname = os.tmpdir();
   const pathname = path.join(baseTemporaryPathname, name);
   const climbed = path.relative(baseTemporaryPathname, pathname);
+  const role = 'generateFileName() as name';
 
-  if (name === '' || path.isAbsolute(name) || climbed.startsWith('..')) {
-    ThrowTypeError('generateFileName() as name', 'relative path');
+  if (path.isAbsolute(name) || climbed.startsWith('..')) {
+    ThrowTypeError(role, 'relative path');
+  }
+
+  if (pathname === baseTemporaryPathname) {
+    ThrowTypeError(role, 'path inside the temporary directory');
   }
 
   return pathname;

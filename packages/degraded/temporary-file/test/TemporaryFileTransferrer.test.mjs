@@ -14,7 +14,12 @@ const { Transferrer } = TemporaryFile;
 const NAMED = 'probe-named.tmp';
 const NESTED = 'probe-nested/probe-named.tmp';
 const EXPECTED = {
-  REFUSED: { name: 'TypeError', message: /generateFileName\(\) as name/ },
+  TYPED: { name: 'TypeError', message: /one "string"/ },
+  OUTSIDE: { name: 'TypeError', message: /one "relative path"/ },
+  ON_DIRECTORY: {
+    name: 'TypeError',
+    message: /one "path inside the temporary directory"/,
+  },
 };
 
 const makeNaming = (name) => {
@@ -91,22 +96,34 @@ describe('TemporaryFileTransferrer', () => {
       assert.equal(new NestedTransferrer().pathname, join(tmpdir(), NESTED));
     });
 
-    it('should refuse an empty, absolute or climbing name', async () => {
-      const refused = ['', join(tmpdir(), NAMED), `../${NAMED}`];
+    it('should refuse an absolute or climbing name', async () => {
+      const refused = [join(tmpdir(), NAMED), `../${NAMED}`];
 
       for (const name of refused) {
         const { distributor } = makeSpooling(['a'], {
           medium: makeNaming(name),
         });
 
-        await assert.rejects(drain(distributor.fork()), EXPECTED.REFUSED);
+        await assert.rejects(drain(distributor.fork()), EXPECTED.OUTSIDE);
+      }
+    });
+
+    it('should refuse a name that is the temporary directory itself', async () => {
+      const refused = ['', '.', 'probe-nested/..'];
+
+      for (const name of refused) {
+        const { distributor } = makeSpooling(['a'], {
+          medium: makeNaming(name),
+        });
+
+        await assert.rejects(drain(distributor.fork()), EXPECTED.ON_DIRECTORY);
       }
     });
 
     it('should refuse a name that is not a string', async () => {
       const { distributor } = makeSpooling(['a'], { medium: makeNaming(0) });
 
-      await assert.rejects(drain(distributor.fork()), EXPECTED.REFUSED);
+      await assert.rejects(drain(distributor.fork()), EXPECTED.TYPED);
     });
   });
 });

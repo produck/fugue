@@ -995,10 +995,11 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   全局 `crypto` 的 `randomUUID`）——并发不撞名，名字里还带着产品名；不建私有
   目录，于是释放后一点痕迹不留（文件由父类的释放删掉）。构造器读的是
   `new.target.generateFileName()`，所以子类重载命名器即生效，不必另给参数。
-- **命名器要过闸**：命名器的返回值必须是**留在临时目录内的相对路径**——非空、
-  非绝对、不靠 `..` 爬出去（把拼接结果拿 `path.relative` 量一次，见
-  `temporaryPathname()`）；否则
-  `ThrowTypeError('generateFileName() as name', 'relative path')`。
+- **命名器要过闸**：命名器的返回值必须是**临时目录内的一个路径**——非绝对、
+  不靠 `..` 爬出去（拿 `path.relative` 量一次）；**落到临时目录本身上也算错**
+  （`''` / `.` / `a/..` 都会拼成目录本身）。两种情形都抛
+  `ThrowTypeError('generateFileName() as name', …)`：前者答 `relative path`，
+  后者答 `path inside the temporary directory`。
 - **别处放盘请用 node-file**：临时介质不让宿主借名字把 spool 放到临时目录
   之外，也就堵掉了"绕开临时目录机制"这条路。
 - **参数与构造器对应（2026-10-01 定）**：构造器不收参数 ⇒ 钩子答 `[]`。
