@@ -3,7 +3,7 @@
     "url": "https://github.com/produck/fugue/issues"
   },
   "dependencies": {
-    "@produck/fugue": "^0.0.0",
+    "@produck/fugue": "^0.1.0",
     "@produck/type-error": "^0.1.7"
   },
   "description": "The file degraded medium for @produck/fugue, on Node's file system.",
@@ -44,5 +44,5 @@
     "test": "node test/index.mjs"
   },
   "type": "module",
-  "version": "0.0.0"
+  "version": "0.1.0"
 }
