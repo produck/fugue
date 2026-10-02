@@ -13,6 +13,9 @@
       "types": "./src/index.d.ts"
     }
   },
+  "files": [
+    "src"
+  ],
   "homepage": "https://github.com/produck/fugue/tree/main/packages/degraded/node-file#readme",
   "imports": {
     "#test/*": "./test/*"
@@ -28,6 +31,9 @@
   "license": "MIT",
   "main": "./src/index.mjs",
   "name": "@produck/fugue-degraded-node-file",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "directory": "packages/degraded/node-file",
     "type": "git",

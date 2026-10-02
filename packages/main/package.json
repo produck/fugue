@@ -16,6 +16,9 @@
       "types": "./src/index.d.ts"
     }
   },
+  "files": [
+    "src"
+  ],
   "homepage": "https://github.com/produck/fugue/tree/main/packages/main#readme",
   "imports": {
     "#test/*": "./test/*"
@@ -31,6 +34,9 @@
   "license": "MIT",
   "main": "./src/index.mjs",
   "name": "@produck/fugue",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "directory": "packages/main",
     "type": "git",
