@@ -3,6 +3,8 @@ import { _A, PART, TRANSFERRER } from './_External.mjs';
 import * as Part from './Part/index.mjs';
 import * as Options from './Options/index.mjs';
 
+const { Get } = Options;
+
 export default class SourceConsumptionAgent extends Part.Abstract {
   pulling = null;
   pulledChunkCount = 0;
@@ -61,14 +63,12 @@ export default class SourceConsumptionAgent extends Part.Abstract {
   degradeIfNeeded() {
     const distributor = this[PART.$I.DISTRIBUTOR];
     const stash = distributor[A.$I.STASH];
-    const stashLimit = Options.Get.MaxChunkStashByteLength(distributor);
-    const should = Options.Get.DegradeOnChunkStashFullAndDone(distributor);
 
-    if (stash.byteLength <= stashLimit) {
+    if (stash.byteLength <= Get.MaxChunkStashByteLength(distributor)) {
       return;
     }
 
-    if (stash.done && !should) {
+    if (stash.done && !Get.DegradeOnChunkStashFullAndDone(distributor)) {
       return;
     }
 

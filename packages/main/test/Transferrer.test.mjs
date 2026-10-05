@@ -16,6 +16,22 @@ import {
   _I as HOST,
 } from '../src/Distributor/DegradedChunkReader/Transferrer/_Symbol.mjs';
 
+const MEDIUM = Symbol('.#medium');
+
+class FallbackTransferrer extends Fugue.Transferrer {
+  [MEDIUM] = [];
+
+  async [HOST.WRITE](buffer) {
+    this[MEDIUM].push(buffer);
+  }
+
+  [HOST.DROP]() {}
+
+  get medium() {
+    return this[MEDIUM];
+  }
+}
+
 describe('Transferrer', () => {
   describe('constructor()', () => {
     it('should receive the parsed argument list', async () => {
@@ -673,6 +689,84 @@ describe('Transferrer', () => {
 
       await attempted;
       await distributor.destroy();
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(medium.dropped, true);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
+    });
+
+    it('should write the stash by itself when the medium has no dump', async () => {
+      const family = makeFamily({ medium: FallbackTransferrer });
+      const distributor = new family.Distributor(makeSource(['aa', 'bb']));
+      const forked = distributor.fork();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
+
+      assert.deepEqual(await drain(forked), ['aa', 'bb']);
+
+      const medium = family.created.at(-1);
+
+      assert.deepEqual(medium.medium.map(String), ['aa', 'bb']);
+    });
+
+    it('should resume the default dump instead of writing a chunk twice', async () => {
+      const cause = new Error('the medium refused to write');
+      const attempted = [];
+      let writing = 0;
+
+      class HiccupTransferrer extends FallbackTransferrer {
+        async [HOST.WRITE](buffer) {
+          writing += 1;
+          attempted.push(String(buffer));
+
+          if (writing === 2) {
+            throw cause;
+          }
+
+          await super[HOST.WRITE](buffer);
+        }
+      }
+
+      const family = makeFamily({ medium: HiccupTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const forked = distributor.fork();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
+
+      assert.deepEqual(await drain(forked), ['a', 'b']);
+
+      const medium = family.created.at(-1);
+
+      assert.deepEqual(attempted, ['a', 'b', 'b']);
+      assert.deepEqual(medium.medium.map(String), ['a', 'b']);
+    });
+
+    it('should give up the default dump when the release lands while it writes', async () => {
+      let releaseWriting = null;
+
+      class SlowWritingTransferrer extends FallbackTransferrer {
+        [HOST.WRITE](buffer) {
+          return new Promise((resolve) => {
+            releaseWriting = () => resolve(super[HOST.WRITE](buffer));
+          });
+        }
+      }
+
+      const family = makeFamily({ medium: SlowWritingTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+
+      reading.read().catch(() => {});
+
+      await settle();
+      await distributor.destroy();
+      releaseWriting();
       await settle();
 
       const medium = family.created.at(-1);

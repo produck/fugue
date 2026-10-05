@@ -52,6 +52,13 @@ class AbstractTransferrer extends Part.Abstract {
     }
   }
 
+  [I.ADVANCE](count) {
+    for (let i = 0; i < count; i++) {
+      this[I.PENDING_CHUNKS].shift();
+      this[A.I.WRITTEN_COUNT]++;
+    }
+  }
+
   async [I.INITIALIZE]() {
     const distributor = this[PART.$I.DISTRIBUTOR];
     const maxRetryCount = Options.getMaxInitializeRetryCount(distributor);
@@ -116,10 +123,10 @@ class AbstractTransferrer extends Part.Abstract {
 
     if (ok) {
       const { length } = stash;
+      const written = this[A.I.WRITTEN_COUNT];
 
       stash[_A.STASH.$I.DROP]();
-      this[I.PENDING_CHUNKS].splice(0, length);
-      this[A.I.WRITTEN_COUNT] = length;
+      this[I.ADVANCE](length - written);
     } else {
       this[I.PREPARING_ERROR] = state.cause;
     }
@@ -204,9 +211,8 @@ class AbstractTransferrer extends Part.Abstract {
         break;
       }
 
-      this[I.PENDING_CHUNKS].shift();
+      this[I.ADVANCE](1);
       this[I.PENDING_BYTE_LENGTH] -= buffer.byteLength;
-      this[A.I.WRITTEN_COUNT]++;
     }
 
     this[I.DRAINING] = null;
@@ -285,6 +291,15 @@ class AbstractTransferrer extends Part.Abstract {
 
   get pendingByteLength() {
     return this[I.PENDING_BYTE_LENGTH];
+  }
+
+  async [_I.DUMP](stash) {
+    const { length } = stash;
+
+    while (!this[I.DROPPED] && this[A.I.WRITTEN_COUNT] < length) {
+      await this[_I.WRITE](this[I.PENDING_CHUNKS][0]);
+      this[I.ADVANCE](1);
+    }
   }
 
   [_I.INITIALIZE]() {}

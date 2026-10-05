@@ -443,9 +443,9 @@ graph BT
   - `$I.PREPARE(chunkStash)` — 交出整个 `ChunkStash`，**同步
     返回**：先接管 stash 的整份块列表（此刻队列必空），再把那一趟记进
     `I.PREPARING` 并返回，本体在 `I.PREPARE` 里——**prepare 阶段 = 就绪 +
-    交付**：同一步里先跑就绪段（见下），再调抽象 `_I.DUMP` 开工，成功即
-    `DROP` 载体、
-    清掉接管的这 L 条（已落盘）并把水位一次推满；失败只闩
+    交付**：同一步里先跑就绪段（见下），再调 `_I.DUMP`（默认逐 chunk 走
+    `_I.WRITE`，可覆盖），成功即 `DROP` 载体、把接管的这 L 条落账（出队 +
+    水位前进）；失败只闩
     `I.PREPARING_ERROR` 并结算门（保留现场不 DROP；接管的
     这批仍在队列里，各拷贝按自己位置读到底，只有永不会有块的位被拒），
     返回的 Promise 以转义错误拒（`transferrer-dump-failed` 已在发生处派出）。

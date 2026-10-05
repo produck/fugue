@@ -345,15 +345,22 @@ describe('Options', () => {
         );
       });
 
-      it('should be read on every pull', async () => {
-        const chunks = ['a', 'b', 'c'];
-        const distributor = makeDistributor(chunks);
+      it('should be consulted once the stash is full and the source ended', async () => {
+        const distributor = makeDistributor(['a']);
         const tune = Tune.DegradeOnChunkStashFullAndDone;
         const reads = countGetterReads(distributor, tune, true);
-        const forked = distributor.fork();
+        const reader = distributor.fork().getReader();
 
-        assert.deepEqual(await drain(forked), chunks);
-        assert.equal(reads(), chunks.length + 1);
+        Tune.MaxChunkStashByteLength(distributor, 1);
+
+        await reader.read();
+
+        Tune.MaxChunkStashByteLength(distributor, 0);
+
+        await reader.read();
+
+        assert.equal(distributor.degraded, true);
+        assert.ok(reads() > 0);
       });
     });
 

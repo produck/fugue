@@ -16,7 +16,7 @@ const items = [
     assert: Assert.NonNegativeInteger,
   },
   {
-    // Read on every pull, by the same probe (degradeIfNeeded()).
+    // Read by the same probe, once the stash is both over the limit and done.
     name: 'DegradeOnChunkStashFullAndDone',
     defaultValue: false,
     assert: Assert.Boolean,

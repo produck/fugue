@@ -135,13 +135,14 @@ refused to open`。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
     `should dispatch warn(transferrer-initialize-failed) when it is refused`；
     `Transferrer.test.mjs` › `should retry the ready step on its own budget`。
-- **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒；可重试，
-  用尽才闩）
+- **\[L3\]** · **`transferrer-dump-failed`**（`_I.DUMP` 拒——宿主自实现或
+  默认交付里的 `_I.WRITE` 拒；可重试，用尽才闩）
   - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
     事件是独立快照）。
   - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
   - 后处理：按 `TransferrerDumpRetryInterval` 重试到
-    `MaxTransferrerDumpRetryCount`；期间不闩错、`prepared`
+    `MaxTransferrerDumpRetryCount`（**默认交付续跑，已落盘的块不重写**）；
+    期间不闩错、`prepared`
     保持 pending、队列里的块照发（吸收）；用尽则闩
     `I.PREPARING_ERROR` 并结算门——未被接受的位当场拒；`destroy()` 落下时
     立即收手（既不闩也不记账）。

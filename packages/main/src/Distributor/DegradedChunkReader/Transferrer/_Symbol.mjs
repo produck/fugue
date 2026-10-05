@@ -16,6 +16,7 @@ const I_DROPPED = Symbol('.#dropped');
 const I_INITIALIZE = Symbol('.#initialize()');
 const I_PREPARE = Symbol('.#prepare()');
 const I_DUMP = Symbol('.#dump()');
+const I_ADVANCE = Symbol('.#advance()');
 const I_SETTLE = Symbol('.#settle()');
 
 export const I = deepFreeze({
@@ -35,6 +36,7 @@ export const I = deepFreeze({
   INITIALIZE: I_INITIALIZE,
   PREPARE: I_PREPARE,
   DUMP: I_DUMP,
+  ADVANCE: I_ADVANCE,
   SETTLE: I_SETTLE,
 });
 

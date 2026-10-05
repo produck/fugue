@@ -137,10 +137,11 @@ export declare abstract class Transferrer<
    */
   [TRANSFERRER_I.INITIALIZE](): void | PromiseLike<void>;
 
-  /** Hand the stash to the medium, whole. */
-  abstract [TRANSFERRER_I.DUMP](
-    stash: ChunkStash<Chunk>,
-  ): void | PromiseLike<void>;
+  /**
+   * Hand the stash to the medium, whole. The default writes it through
+   * `_I.WRITE`, one chunk at a time, and resumes where a rejection left off.
+   */
+  [TRANSFERRER_I.DUMP](stash: ChunkStash<Chunk>): void | PromiseLike<void>;
 
   /** Take one chunk. Rejecting it defers the chunk, it does not lose it. */
   abstract [TRANSFERRER_I.WRITE](chunk: Chunk): void | PromiseLike<void>;

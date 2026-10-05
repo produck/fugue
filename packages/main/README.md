@@ -358,7 +358,7 @@ What they mean:
   transferrer report `transferrer-backlog`. Read after every write.
 - `DegradeOnChunkStashFullAndDone` — whether a stash that is both over the
   limit and complete still degrades. Left `false`, a source that ends
-  under the limit stays in memory. Read on every pull.
+  under the limit stays in memory. Read once both hold.
 - `ForkedReadableStreamHighWaterMark` — the high water mark of every copy
   forked from now on. A live copy keeps the value it was forked with. Read
   once per fork.
@@ -548,11 +548,17 @@ and `stash.byteLength` what is worth writing, `stash.get(i)` and
 `stash.chunks()` how to reach the bytes. `chunks()` is a copy: an
 iteration never sees a later push.
 
+The default writes the stash through your own `_I.WRITE`, one chunk at a
+time, so a medium that only writes and drops can leave it out; a medium
+that writes a whole stash at once can override it.
+
 A rejection is retried per `MaxTransferrerDumpRetryCount` /
-`TransferrerDumpRetryInterval`, and each attempt is reported. When the
-budget runs out, the failure is latched: the queued prefix is still served
-to the copies, but every later write and every position wait throws that
-same error — a tail cut, not a whole-stream failure.
+`TransferrerDumpRetryInterval`, and each attempt is reported. An override
+sees the whole stash again on every attempt; the default resumes instead,
+for a chunk it has written has already left the queue. When the budget runs
+out, the failure is latched: the queued prefix is still served to the
+copies, but every later write and every position wait throws that same
+error — a tail cut, not a whole-stream failure.
 
 #### `[Fugue.SYMBOL.TRANSFERRER._I.WRITE](chunk)`
 
