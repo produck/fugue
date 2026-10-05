@@ -29,7 +29,7 @@ const makeSpooling = (path, chunks) => {
   const distributor = new family.Distributor(makeSource(chunks));
 
   distributor.setTransferrerArgs(path);
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   return { distributor, family };
 };
@@ -143,7 +143,7 @@ describe('Distributor', () => {
       const family = makeFamily();
       const distributor = new family.Distributor(makeSource(['a']));
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await assert.rejects(drain(distributor.fork()), EXPECTED.TYPED);
     });
@@ -191,7 +191,7 @@ describe('Distributor', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
 
       distributor.setTransferrerArgs(path);
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       const degraded = new Promise((resolve) => {
         distributor.addEventListener('degrade', resolve);
@@ -204,7 +204,7 @@ describe('Distributor', () => {
       await assert.rejects(reading, EXPECTED.ABORTED);
 
       open();
-      await family.created[0].dumping;
+      await family.created[0].prepared;
 
       await assert.rejects(stat(path), { code: 'ENOENT' });
     });

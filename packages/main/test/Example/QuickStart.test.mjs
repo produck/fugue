@@ -81,7 +81,7 @@ it('should carry a live copy across the switch to the medium', async () => {
   const distributor = new MemoryDistributor(makeSource(['hello ', 'world']));
   const copy = distributor.fork();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   assert.deepEqual(await drain(copy), ['hello ', 'world']);
   assert.equal(distributor.degraded, true);
@@ -91,7 +91,7 @@ it('should serve a copy forked after the switch, from birth', async () => {
   const distributor = new MemoryDistributor(makeSource(['hello ', 'world']));
   const early = distributor.fork().getReader();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await early.read();
   assert.equal(distributor.degraded, true);

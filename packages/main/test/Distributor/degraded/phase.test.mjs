@@ -22,18 +22,18 @@ it('should be false while the stash holds the data', async () => {
   const distributor = new TestDistributor(makeSource(['a', 'b']));
   const reader = distributor.fork().getReader();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 1024);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1024);
 
   await reader.read();
 
   assert.equal(distributor.degraded, false);
 });
 
-it('should turn true on the pull that crossed MaxStashByteLength', async () => {
+it('should turn true on the pull that crossed MaxChunkStashByteLength', async () => {
   const distributor = new TestDistributor(makeSource(['a', 'b']));
   const reader = distributor.fork().getReader();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
 
   await reader.read();
   assert.equal(distributor.degraded, false);
@@ -46,27 +46,27 @@ it('should turn true at the limit even when the source is done', async () => {
   const distributor = new TestDistributor(makeSource(['a']));
   const reader = distributor.fork().getReader();
 
-  Fugue.Options.Tune.DegradeOnStashFullAndDone(distributor, true);
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
+  Fugue.Options.Tune.DegradeOnChunkStashFullAndDone(distributor, true);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
 
   await reader.read();
   assert.equal(distributor.degraded, false);
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await reader.read();
   assert.equal(distributor.degraded, true);
 });
 
-it('should follow DegradeOnStashFullAndDone for a full, ended stash', async () => {
+it('should follow DegradeOnChunkStashFullAndDone for a full, ended stash', async () => {
   const distributor = new TestDistributor(makeSource(['a']));
   const reader = distributor.fork().getReader();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
 
   await reader.read();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   const end = await reader.read();
 
@@ -99,7 +99,7 @@ it('should stay false, rejecting the read, when the family is unfinished', async
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await assert.rejects(reader.read(), EXPECTED.UNIMPLEMENTED);
   assert.equal(distributor.degraded, false);
@@ -123,7 +123,7 @@ it('should stay false, rejecting the read, when the host constructor throws', as
 
   distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await assert.rejects(reader.read(), cause);
   assert.equal(distributor.degraded, false);
@@ -150,8 +150,8 @@ it('should reject the read that needs the medium when the medium refused to open
   const distributor = new family.Distributor(makeSource(['a']));
   const reader = distributor.fork().getReader();
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-  Fugue.Options.Asset.noRetry(distributor);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+  Fugue.Options.Preset.noRetry(distributor);
 
   await assert.rejects(reader.read(), cause);
   assert.equal(distributor.degraded, true);

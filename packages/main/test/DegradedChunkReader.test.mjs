@@ -40,7 +40,7 @@ describe('DegradedChunkReader', () => {
       const distributor = new TestDistributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -55,7 +55,7 @@ describe('DegradedChunkReader', () => {
       const distributor = new TestDistributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -71,7 +71,7 @@ describe('DegradedChunkReader', () => {
       const forked = distributor.fork();
       const reading = forked.getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -89,7 +89,7 @@ describe('DegradedChunkReader', () => {
       const forked = distributor.fork();
       const reading = forked.getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -104,7 +104,7 @@ describe('DegradedChunkReader', () => {
       const forked = distributor.fork();
       const reading = forked.getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -143,7 +143,7 @@ describe('DegradedChunkReader', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const first = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await first.read();
 

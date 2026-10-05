@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import * as Fugue from '@produck/fugue';
 
 import {
+  drain,
   makeFamily,
   makeSource,
   settle,
@@ -23,7 +24,7 @@ describe('Transferrer', () => {
       const forked = distributor.fork();
 
       distributor.setTransferrerArgs('x', 'y');
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -57,7 +58,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -84,7 +85,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -124,8 +125,8 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b', 'c']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Asset.noRetry(distributor);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Preset.noRetry(distributor);
 
       await reading.read();
       await reading.read();
@@ -168,9 +169,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
-      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -209,9 +210,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
-      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -248,9 +249,9 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxDumpRetryCount(distributor, Infinity);
-      Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, Infinity);
+      Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
 
       await reading.read();
       await retried;
@@ -299,10 +300,13 @@ describe('Transferrer', () => {
       const warns = [];
 
       distributor.addEventListener('warn', (event) => warns.push(event.detail));
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
-      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+        distributor,
+        1024,
+      );
+      Fugue.Options.Tune.MaxTransferrerDrainRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDrainRetryInterval(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -349,10 +353,13 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
-      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+        distributor,
+        1024,
+      );
+      Fugue.Options.Tune.MaxTransferrerDrainRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDrainRetryInterval(distributor, 0);
 
       await reading.read();
       reading.read().catch(() => {});
@@ -389,10 +396,13 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-      Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-      Fugue.Options.Tune.MaxDrainRetryCount(distributor, Infinity);
-      Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+        distributor,
+        1024,
+      );
+      Fugue.Options.Tune.MaxTransferrerDrainRetryCount(distributor, Infinity);
+      Fugue.Options.Tune.TransferrerDrainRetryInterval(distributor, 0);
 
       await reading.read();
       reading.read().catch(() => {});
@@ -423,7 +433,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['aa', 'bb']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
       await reading.read();
@@ -438,9 +448,9 @@ describe('Transferrer', () => {
     });
   });
 
-  describe('.dumping', () => {
+  describe('.prepared', () => {
     it('should be null before the stash is taken over', () => {
-      assert.equal(new TestTransferrer().dumping, null);
+      assert.equal(new TestTransferrer().prepared, null);
     });
 
     it('should be the promise of the taking over, while it runs', async () => {
@@ -463,7 +473,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       forked.getReader().read();
 
@@ -471,9 +481,9 @@ describe('Transferrer', () => {
 
       const medium = family.created.at(-1);
 
-      assert.ok(medium.dumping instanceof Promise);
+      assert.ok(medium.prepared instanceof Promise);
 
-      medium.dumping.then(() => {
+      medium.prepared.then(() => {
         settled = true;
       });
 
@@ -481,9 +491,194 @@ describe('Transferrer', () => {
       assert.equal(settled, false);
 
       releaseDump();
-      await medium.dumping;
+      await medium.prepared;
 
       assert.equal(settled, true);
+    });
+
+    it('should get the medium ready before it hands the stash over', async () => {
+      const trace = [];
+
+      class TracingTransferrer extends TestTransferrer {
+        [HOST.INITIALIZE]() {
+          trace.push('initialize');
+        }
+
+        [HOST.DUMP](stash) {
+          trace.push('dump');
+
+          return super[HOST.DUMP](stash);
+        }
+      }
+
+      const family = makeFamily({ medium: TracingTransferrer });
+      const distributor = new family.Distributor(makeSource(['a']));
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+
+      assert.deepEqual(await drain(distributor.fork()), ['a']);
+      assert.deepEqual(trace, ['initialize', 'dump']);
+    });
+
+    it('should get the medium ready once, however many attempts', async () => {
+      let readying = 0;
+      let calls = 0;
+
+      class HiccupTransferrer extends TestTransferrer {
+        [HOST.INITIALIZE]() {
+          readying += 1;
+        }
+
+        [HOST.DUMP](stash) {
+          calls += 1;
+
+          if (calls === 1) {
+            throw new Error('a hiccup');
+          }
+
+          return super[HOST.DUMP](stash);
+        }
+      }
+
+      const family = makeFamily({ medium: HiccupTransferrer });
+      const distributor = new family.Distributor(makeSource(['a']));
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
+
+      assert.deepEqual(await drain(distributor.fork()), ['a']);
+      assert.equal(calls, 2);
+      assert.equal(readying, 1);
+    });
+
+    it('should retry the ready step on its own budget', async () => {
+      const cause = new Error('the medium refused to open');
+      let readying = 0;
+      let calls = 0;
+      let release = null;
+
+      const retried = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class RefusingTransferrer extends TestTransferrer {
+        [HOST.INITIALIZE]() {
+          readying += 1;
+
+          if (readying === 2) {
+            release();
+          }
+
+          throw cause;
+        }
+
+        [HOST.DUMP](stash) {
+          calls += 1;
+
+          return super[HOST.DUMP](stash);
+        }
+      }
+
+      const family = makeFamily({ medium: RefusingTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerInitializeRetryCount(distributor, 1);
+      Fugue.Options.Tune.TransferrerInitializeRetryInterval(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 0);
+
+      await reading.read();
+      await retried;
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(readying, 2);
+      assert.equal(calls, 0);
+      assert.equal(medium[TRANSFERRER_I.ERROR], cause);
+    });
+
+    it('should give up the attempt when the release lands while it readies', async () => {
+      let releaseReadying = null;
+      let calls = 0;
+
+      class SlowReadyingTransferrer extends TestTransferrer {
+        [HOST.INITIALIZE]() {
+          return new Promise((resolve) => {
+            releaseReadying = resolve;
+          });
+        }
+
+        [HOST.DUMP](stash) {
+          calls += 1;
+
+          return super[HOST.DUMP](stash);
+        }
+      }
+
+      const family = makeFamily({ medium: SlowReadyingTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+
+      reading.read().catch(() => {});
+
+      await settle();
+      await distributor.destroy();
+      releaseReadying();
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(calls, 0);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
+    });
+
+    it('should give up the attempt when the release lands between retries', async () => {
+      const cause = new Error('the medium refused to open');
+      let readying = 0;
+      let release = null;
+
+      const attempted = new Promise((resolve) => {
+        release = resolve;
+      });
+
+      class RefusingTransferrer extends TestTransferrer {
+        [HOST.INITIALIZE]() {
+          readying += 1;
+
+          if (readying === 1) {
+            release();
+          }
+
+          throw cause;
+        }
+      }
+
+      const family = makeFamily({ medium: RefusingTransferrer });
+      const distributor = new family.Distributor(makeSource(['a', 'b']));
+      const reading = distributor.fork().getReader();
+
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxTransferrerInitializeRetryCount(
+        distributor,
+        Infinity,
+      );
+      Fugue.Options.Tune.TransferrerInitializeRetryInterval(distributor, 0);
+
+      reading.read().catch(() => {});
+
+      await attempted;
+      await distributor.destroy();
+      await settle();
+
+      const medium = family.created.at(-1);
+
+      assert.equal(medium.dropped, true);
+      assert.equal(medium[TRANSFERRER_I.ERROR], null);
     });
   });
 
@@ -493,12 +688,12 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const reading = distributor.fork().getReader();
 
-      Fugue.Options.Tune.DegradeOnStashFullAndDone(distributor, true);
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
+      Fugue.Options.Tune.DegradeOnChunkStashFullAndDone(distributor, true);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
 
       await reading.read();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await reading.read();
 
@@ -511,7 +706,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -531,7 +726,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a', 'b']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -555,7 +750,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -581,7 +776,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 
@@ -604,7 +799,7 @@ describe('Transferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
       const forked = distributor.fork();
 
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       await forked.getReader().read();
 

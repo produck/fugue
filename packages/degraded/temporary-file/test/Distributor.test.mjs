@@ -10,7 +10,7 @@ const makeSpooling = (chunks) => {
   const family = makeFamily();
   const distributor = new family.Distributor(makeSource(chunks));
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   return { distributor, family };
 };
@@ -44,7 +44,7 @@ describe('Distributor', () => {
       const distributor = new family.Distributor(makeSource(['a']));
 
       distributor.setTransferrerArgs();
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       assert.deepEqual(await drain(distributor.fork()), ['a']);
 

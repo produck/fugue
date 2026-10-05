@@ -91,8 +91,9 @@
     每个降级读器各派）。
   - 失败域：该读器，**从第一个需要介质的位置起**出局（在那之前队列交付
     的读不受影响）；未用尽不闩。
-  - 后处理：按 `InitializeRetryInterval` 重试到 `MaxInitializeRetryCount`
-    （重试期间该读器的读一直 pending，队列交付的读照旧）；用尽则原样
+  - 后处理：按 `ChunkReaderInitializeRetryInterval` 重试到
+    `MaxChunkReaderInitializeRetryCount`（重试期间该读器的读一直
+    pending，队列交付的读照旧）；用尽则原样
     抛出；收摊（`I.CLOSED`）落下时立即收手。恢复归宿主——它自己的初始化
     没成功，只有它能判断能不能再来一遍。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
@@ -121,14 +122,28 @@ refused to open`。
     那份数据还在原处。
   - 相关测试：`ForkedReadableStream.test.mjs` ›
     `should dispatch warn(degraded-reader-read-failed) on a failed read`。
+- **\[L3\]** · **`transferrer-initialize-failed`**（宿主 `_I.INITIALIZE` 拒：
+  介质没能就绪；可重试，用尽才闩）
+  - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
+    事件是独立快照）。
+  - 失败域：写侧实例，**还没写过一个字节**——就绪不过就不进 dump。错的量
+    与 dump 失败同类（尾断），但发生点更早。
+  - 后处理：按 `TransferrerInitializeRetryInterval` 重试到
+    `MaxTransferrerInitializeRetryCount`；期间不闩错、`prepared` 保持 pending；
+    用尽则闩 `I.PREPARING_ERROR` 并结算门（**dump 一次都不跑**）；`destroy()`
+    落下时立即收手（既不闩也不记账）。
+  - 相关测试：`Distributor/degraded/warn.test.mjs` ›
+    `should dispatch warn(transferrer-initialize-failed) when it is refused`；
+    `Transferrer.test.mjs` › `should retry the ready step on its own budget`。
 - **\[L3\]** · **`transferrer-dump-failed`**（宿主 `_I.DUMP` 拒；可重试，
   用尽才闩）
   - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
     事件是独立快照）。
   - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
-  - 后处理：按 `DumpRetryInterval` 重试到 `MaxDumpRetryCount`；期间不闩
-    错、`dumping` 保持 pending、队列里的块照发（吸收）；用尽则闩
-    `I.DUMPING_ERROR` 并结算门——未被接受的位当场拒；`destroy()` 落下时
+  - 后处理：按 `TransferrerDumpRetryInterval` 重试到
+    `MaxTransferrerDumpRetryCount`；期间不闩错、`prepared`
+    保持 pending、队列里的块照发（吸收）；用尽则闩
+    `I.PREPARING_ERROR` 并结算门——未被接受的位当场拒；`destroy()` 落下时
     立即收手（既不闩也不记账）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
     `should dispatch warn(transferrer-dump-failed) when the dump fails`、
@@ -142,9 +157,10 @@ refused to open`。
   - 观测：每次尝试一条，载荷 `{ retry, cause }`（`retry` 从 0 起，每条
     事件是独立快照）。
   - 失败域：写侧实例；未用尽不闩，用尽后闩错、不可逆，收摊则不闩。
-  - 后处理：每块由 `I.DRAIN_HEAD` 按 `DrainRetryInterval` 重试到
-    `MaxDrainRetryCount`（**重试归每块，逆历归 `I.DRAIN`**）；期间不闩错、
-    队列里的块照发（吸收）；用尽则闩 `I.DRAINING_ERROR` 并结算门——未被
+  - 后处理：每块由 `I.DRAIN_HEAD` 按 `TransferrerDrainRetryInterval` 重试到
+    `MaxTransferrerDrainRetryCount`（**重试归每块，逆历归 `I.DRAIN`**）；
+    期间不闩错、队列里的块照发（吸收）；用尽则闩 `I.DRAINING_ERROR` 并结算
+    门——未被
     接受的位当场拒；`destroy()` 落下时立即收手（既不闩也不记账）。
   - 相关测试：`Distributor/degraded/warn.test.mjs` ›
     `should dispatch warn(transferrer-write-failed) when the write fails`；
@@ -169,7 +185,7 @@ refused to open`。
 - **"该拷贝"= 拷贝自己摘牌**：`conclude()` 关自己的读器 + 从降级交接名单
   摘牌，其他拷贝各有自己的读器实例，不受影响（它们读同一介质，可能各自
   失败，但不是链式熔断）。
-- **"写侧实例"= 闩错**：介质域的失败按域落在 `I.DUMPING_ERROR` /
+- **"写侧实例"= 闩错**：介质域的失败按域落在 `I.PREPARING_ERROR` /
   `I.DRAINING_ERROR`，各自只置一次、不可逆。闩住之后 drain 不再进循环、
   `$I.WRITE` 直接抛，于是"之后每趟要新数据的读都拒"。已入队 / 已落盘的块
   照发（`[I.SETTLE]` 在终态放行全部等待者，`position < total` 的位就位）。
@@ -222,19 +238,20 @@ refused to open`。
   非 code 抛 `TypeError`），`transferrer-backlog` 是唯一的“带量”信号
   （payload = 当前积压字节），也是唯一不进 `try` 块的异常点（按 L1，
   见 §三）；不采样就没有事件，最后一条也不是峰值。
-- **10 个 code**：`degraded-reader-close-failed` /
+- **11 个 code**：`degraded-reader-close-failed` /
   `degraded-reader-initialize-failed` /
   `degraded-reader-read-failed` / `degraded-reader-seek-failed` /
   `source-cancel-failed` / `source-read-failed` /
   `transferrer-backlog` / `transferrer-dump-failed` /
-  `transferrer-drop-failed` / `transferrer-write-failed`。
+  `transferrer-drop-failed` / `transferrer-initialize-failed` /
+  `transferrer-write-failed`。
 - **命名约定**：**发生处前缀**——源读取器自己发生的失败带 `source-`
   （`source-read-failed`、`source-cancel-failed`）；写侧实例自己发生的信号
-  带 `transferrer-`（现在四个：`transferrer-backlog`、
+  带 `transferrer-`（现在五个：`transferrer-backlog`、
   `transferrer-dump-failed`、`transferrer-drop-failed` /
-  `transferrer-write-failed`）；降级读器自己发生的信号带
-  `degraded-reader-`（现在四个：`degraded-reader-close-failed`、
-  `degraded-reader-initialize-failed`、
+  `transferrer-initialize-failed` / `transferrer-write-failed`）；降级读器
+  自己发生的信号带 `degraded-reader-`（现在四个：
+  `degraded-reader-close-failed`、`degraded-reader-initialize-failed`、
   `degraded-reader-read-failed` / `degraded-reader-seek-failed`）。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。

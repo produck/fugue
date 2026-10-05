@@ -1,2 +1,2 @@
 export * from './Accessor.mjs';
-export * as Asset from './Asset.mjs';
+export * as Preset from './Preset.mjs';

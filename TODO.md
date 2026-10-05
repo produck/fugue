@@ -17,7 +17,8 @@
 实现层的三处实测（2026-09-30，写 `degraded-node-file` 时）：
 
 - 介质把字段名读成 `undefined`，现象是"套件 30s 无输出、exit 124"——
-  `MaxInitializeRetryCount` 默认 `Infinity`、间隔 1s：**配错长得像挂住**。
+  `MaxChunkReaderInitializeRetryCount` 默认 `Infinity`、间隔 1s：
+  **配错长得像挂住**。
 - 想"失败留现场、正常删文件"做不到：错误位 `I.ERROR` 是私有符号，
   `SYMBOL` 只开 `_I` / `_S`，介质侧读不到。
 - 测试侧同一件事：为了断言文件内容，得自己造栅栏（`medium.release`、
@@ -65,12 +66,12 @@
 
 ### D. 默认音量：把后果写进文档
 
-三个重试预算默认 `Infinity`、间隔 1s。韧性上是好默认，但"配错 = 永久
+四个重试预算默认 `Infinity`、间隔 1s。韧性上是好默认，但"配错 = 永久
 重试"这个后果只写在 Options 表的数字里，没写后果。
 
 零 API 成本的改法：在 `Transferrer` 的 `DUMP` / `WRITE` 与
 `DegradedChunkReader` 的 `INITIALIZE` 三处各加一句——预算默认无限 ⇒
-介质持续的失败表现为永久重试；dev/test 建议 `Options.Asset.noRetry`
+介质持续的失败表现为永久重试；dev/test 建议 `Options.Preset.noRetry`
 （快速失败，每次只报一条）——并在 Quick start 里点到这个 preset。
 
 ### E. 排查手册

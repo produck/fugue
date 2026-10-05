@@ -67,7 +67,7 @@
   `_Symbol.mjs` / `_External.mjs` 这条路径。
 - 模块路径即命名空间——跨模块同词不冲突（降级 `_I.READ` 与基类 `_I.READ`
   各自独立）；符号表的键数不设上限。
-- 面向调用者的具名成员（如 `get dumping` / `get done`）用普通字符串键。
+- 面向调用者的具名成员（如 `get prepared` / `get done`）用普通字符串键。
 - 缩写白名单：构造器（`new.target` 捕获）→ `CTOR`。**符号键持有类值一律
   以 `_CTOR` 结尾**（`_S.DEGRADED_CHUNK_READER_CTOR` /
   `_S.TRANSFERRER_CTOR`）。组织级共享符号集已建成（`@produck/argot` 的
@@ -105,7 +105,7 @@
   `{READER}`；`Transferrer`——`{STASH}`；`Part` / `SourceReader` / `ChunkReader`
   没有 `_A`（借表都按名导入）。
 - **别名只给“直接子表 + 本模块自己的符号”**：家族的内部下级表不设别名，
-  按名从 `_External.mjs` 导入即可（写侧 `TRANSFERRER.$I.DUMP`——名字本身
+  按名从 `_External.mjs` 导入即可（写侧 `TRANSFERRER.$I.PREPARE`——名字本身
   已经够短，套一层别名只是多一层）。
 - **局部别名 vs 内联**：一行放不下时起局部别名
   （`const stash = this[A.$I.STASH]`）而不是自行折行；但**实参位置别内联**
@@ -125,8 +125,9 @@
 - 分发器没有公开静态面：策略只经 `_S` 静态钩子声明类值（现只剩
   `_S.DEGRADED_CHUNK_READER_CTOR`），消费者是构造时捕获的
   `SYMBOL.CONSTRUCTOR`（`new.target`），不用 `this.constructor`。
-- 内存→介质阈值：**选项** `MaxStashByteLength`（默认 1GiB 由 `Items.mjs` 给）。
-  读经 `Options.Get.MaxStashByteLength`、写经 `Options.Tune`——构造器只收
+- 内存→介质阈值：**选项** `MaxChunkStashByteLength`（默认 1GiB 由
+  `Items.mjs` 给）。
+  读经 `Options.Get.MaxChunkStashByteLength`、写经 `Options.Tune`——构造器只收
   `source`，没有第二个写入点；降级触发点因此确定可复现。
 - `_S.DEGRADED_CHUNK_READER_CTOR`：策略侧给出的降级读取器类引用，
   degrade 时用它构造各 fork 的新读取器；暂以 `M.Function` 弱校（只确认
@@ -138,7 +139,8 @@
 
 - 一目录一类：主类文件 `Abstract.mjs`/`Concrete.mjs`（存在性互斥）+
   `index.mjs` + `_Symbol.mjs`（借用外部表时再多一个 `_External.mjs`）；
-  目录路径即命名空间。
+  目录路径即命名空间。读选项的模块再多一个 `Options.mjs`——模块内短名
+  （见“Options（配置面）”）。
 - **子类目录平行于抽象类类目录**（兄弟层级）；向下扩展仅限非继承的
   内部类（如 `DegradedChunkReader/Transferrer/`）。
 - 介质侧实现极端简化可用单文件特例（如 `Distributor/BufferChunkReader.mjs`）。
@@ -206,9 +208,10 @@
   `distributor.degraded`）、阈值判据与边界策略在 `degradeIfNeeded()`、**交接与
   终态播种在 `$I.DEGRADE`**。判据对 `done` 那一趟也跑——“达到上限又遇到
   `done` 时切不切”因此是显式声明的决定，不是位置带来的副作用。
-- **边界策略是一个选项**（`DegradeOnStashFullAndDone`，2026-09-21 落）：
+- **边界策略是一个选项**（`DegradeOnChunkStashFullAndDone`，2026-09-21 落）：
   “达到上限且源已到头”时切不切由它决定，判据读法就是它的名字——两个事实都在
-  `degradeIfNeeded()` 里显式：越限（`byteLength > MaxStashByteLength`）+ 到头
+  `degradeIfNeeded()` 里显式：越限
+  （`byteLength > MaxChunkStashByteLength`）+ 到头
   （`stash.done`）。**默认 `false` = 不切**：源已到头，数据全集已在这份 stash
   里且不会再涨，落介质只是白搬一趟；“不切”那一支**不需要交代任何状态**
   （stash 仍是落点、自己的 `done` 也在自己身上），读侧照旧按
@@ -217,10 +220,11 @@
   读器会在前沿等一个永不来的下一笔。两值实测
   `logs/probe-degrade-after-done.mjs`：**读侧结果一致**（`s0 → s1 → close`），
   差别只在落点是内存还是介质（默认相位字节 4、未被 DROP；`true` 时介质 2 块）。
-- **该选项只在“越限且到头”那一趟被读（2026-09-25）**：判据写成
-  `stash.done && !Options.Get.DegradeOnStashFullAndDone(...)`，越限但未到头
-  时左侧即短路、不读它；切换决定不变（照旧切），省下的只是一次函数调用。
-  用例锁两侧：越过阈值那趟读数为 0，越限且到头那趟读数为 1。
+- **该选项现在每趟 pull 都读（2026-09-25 起“越限且到头才读”，2026-10-05
+  改）**：判据里不再靠短路跳过它——越限但未到头时也读一次，只是用不到它
+  的值（照旧切）。改的理由是条件块太长得折行；代价是每趟 pull 多一次
+  函数调用，消费侧给的取值器会被多调几次。用例锁成“每趟 pull 读数 =
+  块数 + 1”。
 - **降级失败与这条策略的交互**：判据每趟都跑 ⇒ 失败不锁死；但若是**到头那一趟
   才修好**而策略为 `false`，重试会被策略挡下，此后源已尽、不再有 pull ⇒
   最终不切换、全量留内存（探针的两支正好覆盖这两个值）。
@@ -329,10 +333,16 @@
 
 - **定位**：分发器的**唯一配置面**。`constructor(source)` 只收源；要读就
   `Options.Get.*`，要改就 `Options.Tune.*`。
-- **文件**：`Options/index.mjs`（门面：转发 `Accessor`、导出 `Asset`）、
+- **命名**（2026-10-05 收口）：`Items.mjs` 里的键是**最完整、无歧义**的
+  公开名——域前缀（`ChunkStash` / `ChunkReader` / `Transferrer`）+ 阶段 +
+  语义，一项一个名。**消费模块不写长名**：每个模块自带一个 `Options.mjs`
+  把长名收成本地短名（`Transferrer/Options.mjs`、
+  `DegradedChunkReader/Options.mjs`），模块只 import 它——短名在模块内唯一，
+  长名在公开面上唯一。要合并粒度就写成 preset，**不在选项层合并**。
+- **文件**：`Options/index.mjs`（门面：转发 `Accessor`、导出 `Preset`）、
   `Options/Accessor.mjs`（注册表：`OPTIONS` 槽位 + `Tune` / `Get` /
   `install` / `snapshot`）、`Options/Items.mjs`（选项定义表）、
-  `Options/Assert.mjs`（断言实现）、`Options/Asset.mjs`（以分配器为参、
+  `Options/Assert.mjs`（断言实现）、`Options/Preset.mjs`（以分配器为参、
   调若干 `Tune` 重新映射语义的函数族：`noRetry` / `unlimitedRetry` /
   `noDumpRetry` …）。**不在类设计规则体系内**：没有
   `_Symbol.mjs` / `_External.mjs`，自带本地槽位符号，也不进
@@ -344,8 +354,9 @@
   - **槽位而不是 WeakMap**：构造期 `this` 是裸实例、之后拿到的是代理，
     WeakMap 按身份键控会两边对不上（实测踩过）；符号字段在代理与裸实例上
     读写的是同一份。
-  - **默认值可以是取值器**（引用另一项）：`MaxBacklogWarningByteLength`
-    默认**跟随** `MaxStashByteLength`，读时才求值——所以 `items` 的数组
+  - **默认值可以是取值器**（引用另一项）：
+    `MaxTransferrerBacklogWarningByteLength`
+    默认**跟随** `MaxChunkStashByteLength`，读时才求值——所以 `items` 的数组
     顺序不是契约。
   - `Items.mjs` 是**叶子**（只 import `Assert.mjs`）：一旦 import 注册表就
     成环 `index ↔ Items`，且从 `Items.mjs` 先进进程会
@@ -369,13 +380,14 @@
   每笔写 / 每个 fork 构造一次）。这条不是风格：`Tune` 之后"为什么不生效"
   只能靠它回答（`ForkHighWaterMark` 只管之后新建的拷贝）。刻度出处：
   `logs/measure-options.mjs` / `logs/measure-options2.mjs`。
-- **六个重试选项（2026-09-29 收口）**：`MaxInitializeRetryCount` /
-  `MaxDumpRetryCount` / `MaxDrainRetryCount` 默认都是 `Infinity`（无限
-  重试），断言走 `NonNegativeIntegerOrInfinity`（`Infinity` 是唯一非整数
-  合法值）；三个 `*RetryInterval` 是两次尝试之间的毫秒数，断言
-  `NonNegativeInteger`，默认 `1 * SECOND`（个数默认无限，间隔就不能默认 0
-  ——否则死盘上是自旋）。三个重试循环都已落位，读取时机写在 `Items.mjs`
-  每项的头一行注释里。
+- **八个重试选项（2026-09-29 收口，2026-10-05 增写侧就绪一对）**：
+  `MaxChunkReaderInitializeRetryCount` / `MaxTransferrerInitializeRetryCount` /
+  `MaxTransferrerDumpRetryCount` / `MaxTransferrerDrainRetryCount` 默认都是
+  `Infinity`（无限重试），断言走 `NonNegativeIntegerOrInfinity`
+  （`Infinity` 是唯一非整数合法值）；四个 `*RetryInterval` 是两次尝试之间
+  的毫秒数，断言 `NonNegativeInteger`，默认 `1 * SECOND`（个数默认无限，
+  间隔就不能默认 0——否则死盘上是自旋）。四个重试循环都已落位，读取时机
+  写在 `Items.mjs` 每项的头一行注释里。
 
 ### SourceConsumptionAgent（消费代理）
 
@@ -394,13 +406,13 @@
   TypeError 顶掉真正的原因
   （实测见 `logs/probe-degrade-failure.mjs`）。
 - **积压告警**：报告点在**转移器**里——`$I.WRITE` 入队后问一次
-  `pendingByteLength > MaxBacklogWarningByteLength`
+  `pendingByteLength > MaxTransferrerBacklogWarningByteLength`
   （选项，读经 `Options.Get`）就派
   `warn('transferrer-backlog', { pendingByteLength })`——**不去抖：只要还在
   阈值以上每写一笔派一次**（水准信号，限频归宿主；通常本来就被忽略，代价
-  只是每次一点分配），该选项默认**跟随** `MaxStashByteLength`。这条信号只存在
-  于降级相：内存相被降级触发天然封顶，而积压按设计不设上限、不闸门、
-  也不反压源（“顶住死盘”的代价由宿主从这条 `warn` 里看见）。
+  只是每次一点分配），该选项默认**跟随** `MaxChunkStashByteLength`。这条信号
+  只存在于降级相：内存相被降级触发天然封顶，而积压按设计不设上限、
+  不闸门、也不反压源（“顶住死盘”的代价由宿主从这条 `warn` 里看见）。
 - **它的采样点在写入路径上**（这条信号的边界条件，调阈值前先看这里）：
   `$I.WRITE` 只在某一趟 pull 真的写下一笔时跑，于是——
   ① 消费者暂停或源到头之后不再有 pull，**也就不再采样**：哪怕排水还在排、
@@ -568,7 +580,7 @@
   个参数）；读侧原语 `$I.WAIT_POSITION(position)` / `$I.PEEK(position)`
   由它取。
 - **请求初始化**：`$I.REQUEST_INITIALIZE(progress)` 同步播种位置，并把
-  `I.INITIALIZED` 置为链体 `I.INITIALIZE`：等 `get dumping`（整份转移
+  `I.INITIALIZED` 置为链体 `I.INITIALIZE`：等 `get prepared`（整份转移
   落地）→ `_I.INITIALIZE` 打开介质（**可重试**，见下一条）→ `I.SYNC()`
   进度同步（只能走到介质当时能到的地方）。**失败就是链体 reject**
   （2026-09-25 定）：判据只留一处。两个观测点：重试层每次失败就派
@@ -577,7 +589,7 @@
   报告留在发生处；2026-09-29 加重试）；需要介质的那一读在
   `I.READ_BACK` 的 `await this[I.INITIALIZED]` 上拿到同一个 cause。
 - **初始化可重试，且不再把整条链包进一个 try**（2026-09-29 定）：只有
-  `_I.INITIALIZE` 在 try 里——`await get dumping` 与 `I.SYNC()` 在外面，
+  `_I.INITIALIZE` 在 try 里——`await get prepared` 与 `I.SYNC()` 在外面，
   于是同步失败不再被顺手报成 `degraded-reader-initialize-failed`（以前那两
   种失败会各自再报一条聚合的 `degraded-reader-initialize-failed`，旧期望是
   两条：`degraded-reader-seek-failed` 之后又一条初始化失败。重试的依据：
@@ -605,7 +617,7 @@
   `warn('degraded-reader-close-failed', cause)`
   （2026-09-26：不静默吞；若让它逃出去，destroy 的遍历会被打断）。
   **不** `await I.INITIALIZED`：链体里第一句
-  就是等 `get dumping`，而 `dumping` 在死盘上永不落地，等它就会把收摊
+  就是等 `get prepared`，而 `prepared` 在死盘上永不落地，等它就会把收摊
   一起挂住；`get closed` 暴露状态。
   内存族的 close 是基类**空实现**（无资源），所以 `destroy()` 对两相
   都能用同一句话关。
@@ -663,7 +675,7 @@
   定位只为读回服务：`_I.SEEK` 跨边界不取货，读回才取。
 - **队列拦截正是差值的来源**：命中队列的那些位置不碰介质侧，已跨数就停在
   原处，下一笔落介质前由 `I.SYNC()` 一并补上。
-- **介质契约**：第 i 条记录对应共享序列第 i 位——`$I.DUMP` 交出的是整份
+- **介质契约**：第 i 条记录对应共享序列第 i 位——`$I.PREPARE` 交出的是整份
   stash（不裁剪，index 即绝对位置），所以介质侧实现出生在序列第 0 位。二进制
   布局（长度前缀、对齐、要不要索引）全归策略，家族不假设。**非终态必须
   交块**（要空就交零长 Buffer，洞形由 parser 拒）。
@@ -678,16 +690,17 @@
   `AbstractTransferrer`。**无阻塞调度的复杂性全在此作用域**：外部只
   挥手与转发，不再判断"何时降级 / dump 何时落地"。
 - 四个驱动（受保护，只给分发器与 agent）：
-  - `$I.DUMP(chunkStash)` — 交出整份 stash。**同步返回**：它
+  - `$I.PREPARE(chunkStash)` — 交出整份 stash。**同步返回**：它
     **接管** stash 的整份块列表（同一批对象，只加引用，不复制）——此刻
-    队列必空，因为 `$I.DUMP` 是队列的第一个写入者（transferrer 刚在
+    队列必空，因为 `$I.PREPARE` 是队列的第一个写入者（transferrer 刚在
     `$I.DEGRADE` 里构造出来就挥手），这条是接管式写法的前提。把那一趟
-    记进 `I.DUMPING` 并返回，本体在 `I.DUMP` 里——同一步里就调
-    抽象 `_I.DUMP` 开工，成功即 `$I.DROP` 释放载体、清掉接管的这 L 条
-    （已落盘）并把水位一次推满；失败只闩 `I.DUMPING_ERROR` 并结算门，**不 DROP**
-    （保留现场待查）。接管的这 L 条仍留在队列里——各读者按自己位置读到
-    底，只有永不会有块的位被拒。返回的 Promise 失败时以转义错误拒给，
-    唯一消费者是分发器（非阻塞挂 `warn`）。
+    记进 `I.PREPARING` 并返回，本体在 `I.PREPARE` 里——**prepare 阶段 =
+    就绪 + 交付**（2026-10-05 起）：先跑就绪段（就绪重试循环，自己的预算
+    与报文），成功再调抽象 `_I.DUMP` 开工；成功即 `$I.DROP` 释放载体、清掉
+    接管的这 L 条（已落盘）并把水位一次推满；失败只闩 `I.PREPARING_ERROR`
+    并结算门，**不 DROP**（保留现场待查）。接管的这 L 条仍留在队列里——
+    各读者按自己位置读到底，只有永不会有块的位被拒。返回的 Promise 失败时
+    以转义错误拒给，唯一消费者是分发器（非阻塞挂 `warn`）。
   - `$I.WRITE(buffer)` — **入队即返回**（延缓写入）：不碰介质，只追加
     待写队列并确保 drain 在途。队列**无上限**，积压处置归下游；计数不
     外露（调试看符号表）。
@@ -715,26 +728,26 @@
     连吞都不用。
     “不被 await”是硬约束：宿主的放开若挂住（死盘），`destroy()` 不许被一起
     拖住（2026-09-25 定，用例 `should not wait for the medium to release its
-own resources` 守着）。**drain 同样不等**：死盘会让 `dumping` 永不落地，
+own resources` 守着）。**drain 同样不等**：死盘会让 `prepared` 永不落地，
     收摊不陪它。stash 那半是完成式（同步清干净）。它也**不**替分发器封口：
     `SET_DONE()` 由 `destroy()` 先调，拿到的是“先定长后放开”。
 - **放开后的写侧收手**：drain 不需要额外的标志位——队列被置空，下一圈
   自然退出（在途那一笔照旧落介质，落不回来的不管）。两个错误状态各只
   有一处置位，放开后介质抛出的次生失败落在 `I.DRAINING_ERROR`，不碰
-  `I.DUMPING_ERROR`（源错 / dump 失败）。在途
+  `I.PREPARING_ERROR`（源错 / dump 失败）。在途
   的 `_I.DUMP` **不打断**：宿主若要提前收手，自己查 `get dropped`。
-- 串行链 `I.DRAIN` 单飞：先等 `I.DUMPING` 落地（不然会把接管的这 L 条
+- 串行链 `I.DRAIN` 单飞：先等 `I.PREPARING` 落地（不然会把接管的这 L 条
   再写一遍），再按 FIFO 一块一块写队列，写一块推一格水位。于是
   "活块永远排在 dump 之后"天然成立。
-  - **错误状态按域分开（2026-09-28）**：`I.DUMPING_ERROR` = dump 的失败，
+  - **错误状态按域分开（2026-09-28）**：`I.PREPARING_ERROR` = dump 的失败，
     `I.DRAINING_ERROR` = 排空里写失败的因，**没有共用的 FAIL**，两处各自
     置位并调一次 `I.SETTLE()`。两者互斥：dump 挂了的排空不再写，所以写
-    失败只在 dump 落地后发生——读侧因此能用 `DUMPING_ERROR ??
+    失败只在 dump 落地后发生——读侧因此能用 `PREPARING_ERROR ??
 DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   - **排空不在 dump 失败后碰队列（2026-09-23 实测）**：排空可能起于
     dump 在途时（读在 dump 期间照常发生），它一进门就挂在首句的
-    `await this[I.DUMPING]` 上；dump 随后失败 → 排空恢复时撞上循环首项
-    `I.DUMPING_ERROR === null`，队列原样留下（`$I.WRITE` 只挡错误**之后**
+    `await this[I.PREPARING]` 上；dump 随后失败 → 排空恢复时撞上循环首项
+    `I.PREPARING_ERROR === null`，队列原样留下（`$I.WRITE` 只挡错误**之后**
     起的排空，挡不住这一趟）。实测 `logs/probe-drain-guard.mjs`：这一支
     宿主 `_I.WRITE` 调用数 0、`pendingByteLength` 不清零，对照支排空跑完
     （写 2 笔、队列归零）；哨兵用例
@@ -742,11 +755,11 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
     失败则由 `I.DRAIN_HEAD` 收手（重试用尽才 `break`，并闩
     `I.DRAINING_ERROR` 供读侧用）。
   - **单飞位在唯一出口复位**：停止条件写成循环的首项
-    `while (DUMPING_ERROR === null && 队列非空)`，而不是闸后的早退——
+    `while (PREPARING_ERROR === null && 队列非空)`，而不是闸后的早退——
     否则早退会把一个已落定的 promise 留在“正在排”的位置上。今天无观测面
     （`$I.WRITE` 见错即抛，起不了新排空），但那是颗雷。
   - **首句等的是 promise，不是 thunk（2026-09-23）**：
-    `await this[I.DUMPING].catch(noop)` 里，等待与吞拒绝都发生在 dump
+    `await this[I.PREPARING].catch(noop)` 里，等待与吞拒绝都发生在 dump
     那笔 promise 自身上——**两件事不能分给两处**：`then()` 的参数位要
     函数，传 promise 会被按恒等处理，等待立刻返回、也没挂上 handler，
     闸于是在错误置位前被检查，失败 dump 留下的队列会被写掉。
@@ -755,7 +768,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
     的 P1 支同理。
 - 读侧原语（受保护）：`$I.WAIT_POSITION(position)` = 等到该位**已被接受**
   （`position < 水位 + 队列`）或**永远不会有块**（done）。拒绝只落在
-  **永不会有块**那一位：`I.DUMPING_ERROR` / `I.DRAINING_ERROR` 是**介质域**
+  **永不会有块**那一位：`I.PREPARING_ERROR` / `I.DRAINING_ERROR` 是**介质域**
   的否决，已被接受的位照发
   （块还在队列里，介质坏了不作废手上这一份）。放行时把"已被接受"这个
   判断结果一并交给等待者，判据仍只写一处。`$I.PEEK(position)` 给出
@@ -793,10 +806,10 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **纯内部对象**：实例由分发器私有持有，**不开观察面**——要看就进
   调试器按符号表读成员（`I.PENDING_CHUNKS` / `I.PENDING_BYTE_LENGTH` /
   `I.WRITTEN_CHUNK_COUNT` / `I.WAITING_POSITION_TABLE` / `I.DRAINING` /
-  `I.DRAINING_ERROR` / `I.DONE` / `I.DROPPED` / `I.DUMPING` /
-  `I.DUMPING_ERROR`）。
+  `I.DRAINING_ERROR` / `I.DONE` / `I.DROPPED` / `I.PREPARING` /
+  `I.PREPARING_ERROR`）。
   读口是 getter：
-  `dumping` / `done` / `dropped` / `pendingByteLength`；两组错误态合成的
+  `prepared` / `done` / `dropped` / `pendingByteLength`；两组错误态合成的
   那一个走私有 `I.ERROR`（不外露），其余交互
   全走 `$I` 原语。
 - **积压计数 `I.PENDING_BYTE_LENGTH` / `get pendingByteLength`**：只数
@@ -925,7 +938,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   被分发器挂上自己（元件的 `$I.SET_DISTRIBUTOR`——构造器收的是宿主参数，
   塞不进分发器），于是三个宿主模板成员各自就地上报：
   `_I.DUMP` → `transferrer-dump-failed`（载荷是**宿主原始因**；用尽后闩在
-  `I.DUMPING_ERROR`，此后由 `$I.WRITE` / `$I.WAIT_POSITION` 原样抛出，没有
+  `I.PREPARING_ERROR`，此后由 `$I.WRITE` / `$I.WAIT_POSITION` 原样抛出，没有
   包装）· `_I.WRITE` → `transferrer-write-failed`（闩住后仍会在后续每趟
   pull 里由 `$I.WRITE` 同步抛，同样原样）· `_I.DROP` →
   `transferrer-drop-failed` 后只报不抛（收摊面 fail-soft）。
@@ -957,7 +970,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   自己的成员内部吞掉重来。
 - **启动期不动介质的"门"在读回**（2026-09-29 定）：`I.INITIALIZED` 全仓只在
   `I.READ_BACK` 开头被 await，而 `READ_BACK` 只在 `PEEK` 未命中时才进得来
-  ⇒ 队列还攥着的那些位，读路径既不碰介质、也不等 `dumping`、也不受寻道
+  ⇒ 队列还攥着的那些位，读路径既不碰介质、也不等 `prepared`、也不受寻道
   影响；分发器那侧再用 `.catch(noop)` 兜住初始化失败
   （`Distributor/Abstract.mjs`），于是"初始化失败"只体现为一条 warn 与
   将来那次真要用介质的读被拒。谁要是把 `await this[I.INITIALIZED]` 提到
@@ -1055,3 +1068,111 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - 两处映射改成裸 `Name`，消费者探针（`tsc --noEmit`）正反验证通过：
   `Tune.MaxStashByteLength(distributor, value)`、
   `Get.MaxStashByteLength(distributor)`、`Asset.noRetry(distributor)`。
+
+### 2026-10-05
+
+**写侧补上"就绪"这一步**（`_I.INITIALIZE`）：为"`_I.DUMP` 可以省掉"铺路。
+
+- **问题**：`_I.DUMP` 一直兼职两件事——"让介质就绪"与"批量写整份"。
+  `node-file` 的 `open(pathname, 'w')` 就藏在它的头几行里，而 `_I.WRITE`
+  只写不备。于是"只实现 `_I.WRITE` + `_I.DROP`"的介质永远没人替它打开，
+  第一次写就撞 `null.write()`。读侧早有第一等的 `_I.INITIALIZE`（自带预算
+  与报文），写侧没有——不对称就在这里。
+- **定案**：写侧加 `_I.INITIALIZE()`，**基类默认空实现**（没有就绪动作的
+  介质不必写它）；框架在**首次 dump 尝试**里先跑一次，`I.INITIALIZED`
+  闩住，成功即不再重跑——否则 `open('w')` 会在重试时截断已落盘的前缀。
+- **有自己的预算与报文（同日改，按 B）**：`MaxTransferrerInitializeRetryCount`
+  / `TransferrerInitializeRetryInterval` 与 `transferrer-initialize-failed`。
+  两段**串行**（就绪段跑完才进 dump 段），所以预算不叠乘；读侧那对
+  （`MaxInitializeRetryCount`）管的是拷贝的初始化，两者互不影响。代价是
+  Options 从 10 项到 12 项、warn 词表 +1，宿主若已按 dump 预算调
+  "介质打不开"要换口径。
+- **Asset 预设必须跟着长**：`Asset.mjs` 是**逐个列名**的，新预算漏掉时
+  `noRetry` 不会归零它——介质一直拒就变自旋（实测：`warn.test.mjs`
+  跑到最后一条用例仍不退进程，exit 124）。已补
+  `noTransferrerInitializeRetry` / `unlimitedTransferrerInitializeRetry`，
+  `noRetry` / `unlimitedRetry` 覆盖四对；`options.test.mjs` 的清单测试与
+  Asset 用例都把新预算钉住了。
+- **释放竞态**：就绪在途时释放落地，框架放弃这次尝试（不报错、不写），
+  介质在自己成员里收拾句柄（`node-file` 照 `FileChunkReader` 的写法做，
+  带 `c8 ignore`）；`_I.DUMP` 里原来那道"开完发现已被放开"的守卫随就绪
+  一起搬家。
+- **介质侧同步**：`FileTransferrer` 的 `_I.DUMP` 现在只拼接 + 写（不再
+  `open`），`_I.INITIALIZE` 才是开文件的地方；`_I.WRITE` 一个字没改。
+- **仍未做**：`_I.DUMP` 的默认实现（逐 chunk 走写侧）。就绪问题已解，但还
+  差记账分叉——`I.DUMP` 成功分支的 `splice(0, length)` + 水位一次推满只对
+  "一次性写完整份"成立，逐 chunk 路径得让队列自己记（含队列归属与重试
+  预算归属两条，见 `TODO.md`）。
+
+**概念合并：initialize + dump = prepare 阶段**（同日，命名收口）：
+
+- 一个动作被拆成"就绪 + 交付"两段之后，外面需要一个词指代"这一整趟"。
+  定名 **prepare**：`$I.PREPARE(stash)` 是这趟的同步入口（内涵与旧的
+  `$I.DUMP` 一致：接管块列表、返回 Promise、失败闩错），`I.PREPARE` 是本体
+  （就绪段 + 交付段），`I.PREPARING` / `I.PREPARING_ERROR` 是它的在途与
+  错误位；`I.DUMPING_ERROR` 两名合一，因为两段都闩在这一位。
+- **`_I` 侧一个名字都不动**：`INITIALIZE` / `DUMP` / `WRITE` / `DROP` 是
+  **阶段名**，宿主按阶段实现；概念合并只发生在框架内部与公开观察面上。
+- **公开面一并改名**：`get dumping` → `get preparing`（它返回的那趟已经不
+  只是 dump）。0.0.0 阶段，破坏性可接受。
+
+**`Asset` → `Preset`**（同日，命名收口）：
+
+- 理由：`Preset` 说的正是它干的事——显性、逐个列名地把若干最细粒度的
+  `Tune` 重新映射成语义预设；`Asset` 是个空词。
+- **合并粒度只在这里合法**：`Options` 侧保持最细粒度、每项一个无歧义的
+  名字，**不许为了列宽之类的理由在 `Options` 侧合并**；要合并粒度就写成
+  preset，那是显式且互不冲突的入口。
+- 代价：公开面改名（`Fugue.Options.Preset`、d.ts 的 `Preset` /
+  `PresetName`、文件 `Options/Preset.mjs`），13 个文件；preset 函数名
+  （`noRetry` / `unlimitedDumpRetry` …）不含旧词，一个都没动。
+- **历史条目不改名**：本文档 2026-10-05 早前两条里的 `Asset` 是当时的
+  名字，原样保留。
+
+**选项命名收口：公开名最完整，模块内短名**（同日）：
+
+- `Items.mjs` 的 12 个键一律改成**最完整无歧义**的形式——域前缀
+  （`ChunkStash` / `ChunkReader` / `Transferrer`）+ 阶段 + 语义。旧名里
+  `MaxStashByteLength`、读侧与写侧两对 `MaxInitializeRetryCount`、
+  `MaxDumpRetryCount`、`MaxDrainRetryCount` 都缺域前缀，两侧的 initialize
+  只能靠猜；唯一漏网的 `DumpRetryInterval` 一并补成
+  `TransferrerDumpRetryInterval`（同一对里另一个早有前缀）。
+- **粒度不合并**：`Options` 侧一项一个名字；要合并粒度就写成 preset。
+  列宽不够是文档的问题（README 的 Options 表去掉了 `Read` 列，读取时机
+  并入下面每条 bullet），不是把名字改短的理由。
+- **模块内短名**：每个消费模块自带 `Options.mjs`——
+  `Transferrer/Options.mjs`（就绪 / dump / drain 三对 + 积压告警）与
+  `DegradedChunkReader/Options.mjs`（读侧就绪一对），把长名收成
+  `getMaxInitializeRetryCount(distributor)` 这样的本地名；模块只 import
+  它，公开面与文档只认长名。
+- **仍未做**：`ForkHighWaterMark` 的域前缀是 `Fork`，而其它项用的都是类名
+  （`ForkedReadableStream` 才是类）；`SourceConsumptionAgent.mjs` 与
+  `ForkedReadableStream/Concrete.mjs` 两处仍在直接读公开长名。
+
+**降级探针的那项改为每趟 pull 都读**（同日）：
+
+- 起因：条件块里塞着 `Options.Get.DegradeOnChunkStashFullAndDone(...)`，
+  两个判据都得折行；改成各取一个本地名（`stashLimit` / `should`）之后，
+  条件块只剩比较。
+- **读取时机是契约**，所以顺手把第二项从“越限且到头才读”改成“每趟 pull
+  都读”，三处一起动：`Items.mjs` 的注释、`Options.test.mjs` 的两条用例
+  （合并成“每趟 pull 读数 = 块数 + 1”）、本文件上面那条结论。
+- 副作用：每趟 pull 多一次取值器调用；切换决定不变（越限就切，只有
+  “越限 + 到头 + 选项为假”才留在内存）。
+- **仍未做**：该项的本地名只能用 11 个字符以内——
+  `DegradeOnChunkStashFullAndDone` 加 `Options.Get.` 就吃掉 43 列，要更长
+  就得给这个模块也加本地门面。
+
+**公开 getter `preparing` → `prepared`**（同日，取名收口）：
+
+- 理由：内部在途是运行时语义（进行态），对外观测该是完成态——公开面上
+  只有它一个现在分词（`done` / `dropped` / `closed` / `degraded` /
+  `terminated` / `cancelled` / `finished` 全是完成态）。WHATWG 同形：
+  `reader.closed` / `writer.closed` 都是 Promise，名字却是完成态。
+- **只改公开面**：`I.PREPARING` / `I.PREPARING_ERROR` 一个字不动（内部
+  运行时语义）。
+- **名字与保证之间的缺口写明**：WHATWG 的 `closed` 失败会 reject，我们
+  这颗不会——介质失败闩进 `I.PREPARING_ERROR`，`await prepared` 照样
+  fulfilled。d.ts 与 README 各写了一句，不把 fulfilled 说成“介质已就绪”。
+- **仍未做**：要让名字名副其实就得让它 reject（变成状态承诺），那会改失败
+  归属（读器初始化会提前抛）并动 `EXCEPTIONS.md`。

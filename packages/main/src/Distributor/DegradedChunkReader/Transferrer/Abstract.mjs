@@ -4,8 +4,8 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { PART, _A } from './_External.mjs';
+import * as Options from './Options.mjs';
 import * as Part from '../../Part/index.mjs';
-import * as Options from '../../Options/index.mjs';
 import * as Warning from '../../Warning.mjs';
 
 const CODE = Warning.CODES.TRANSFERRER;
@@ -25,13 +25,13 @@ class AbstractTransferrer extends Part.Abstract {
   [I.WAITING_POSITION_TABLE] = new Map();
   [I.DRAINING] = null;
   [I.DRAINING_ERROR] = null;
-  [I.DUMPING] = null;
-  [I.DUMPING_ERROR] = null;
+  [I.PREPARING] = null;
+  [I.PREPARING_ERROR] = null;
   [I.DONE] = false;
   [I.DROPPED] = false;
 
   get [I.ERROR]() {
-    return this[I.DUMPING_ERROR] ?? this[I.DRAINING_ERROR];
+    return this[I.PREPARING_ERROR] ?? this[I.DRAINING_ERROR];
   }
 
   [I.SETTLE]() {
@@ -52,10 +52,42 @@ class AbstractTransferrer extends Part.Abstract {
     }
   }
 
+  async [I.INITIALIZE]() {
+    const distributor = this[PART.$I.DISTRIBUTOR];
+    const maxRetryCount = Options.getMaxInitializeRetryCount(distributor);
+    const retryInterval = Options.getInitializeRetryInterval(distributor);
+    const state = { retry: 0, cause: null };
+
+    while (!this[I.DROPPED]) {
+      try {
+        await this[_I.INITIALIZE]();
+
+        return true;
+      } catch (cause) {
+        state.cause = cause;
+        this[PART.$I.WARN](CODE.INITIALIZE_FAILED, { ...state });
+
+        if (state.retry >= maxRetryCount) {
+          break;
+        }
+
+        state.retry++;
+        await Common.sleep(retryInterval);
+      }
+    }
+
+    if (!this[I.DROPPED]) {
+      this[I.PREPARING_ERROR] = state.cause;
+      this[I.SETTLE]();
+    }
+
+    return false;
+  }
+
   async [I.DUMP](stash) {
     const distributor = this[PART.$I.DISTRIBUTOR];
-    const maxRetryCount = Options.Get.MaxDumpRetryCount(distributor);
-    const retryInterval = Options.Get.DumpRetryInterval(distributor);
+    const maxRetryCount = Options.getMaxDumpRetryCount(distributor);
+    const retryInterval = Options.getDumpRetryInterval(distributor);
     const state = { retry: 0, cause: null };
     let ok = false;
 
@@ -89,21 +121,33 @@ class AbstractTransferrer extends Part.Abstract {
       this[I.PENDING_CHUNKS].splice(0, length);
       this[A.I.WRITTEN_COUNT] = length;
     } else {
-      this[I.DUMPING_ERROR] = state.cause;
+      this[I.PREPARING_ERROR] = state.cause;
     }
 
     this[I.SETTLE]();
   }
 
-  [$I.DUMP](stash) {
+  async [I.PREPARE](stash) {
+    if (await this[I.INITIALIZE]()) {
+      await this[I.DUMP](stash);
+
+      return;
+    }
+
+    if (this[I.DROPPED]) {
+      stash[_A.STASH.$I.DROP]();
+    }
+  }
+
+  [$I.PREPARE](stash) {
     this[I.PENDING_CHUNKS] = [...stash.chunks()];
-    this[I.DUMPING] = this[I.DUMP](stash);
+    this[I.PREPARING] = this[I.PREPARE](stash);
   }
 
   async [I.DRAIN_HEAD](buffer) {
     const distributor = this[PART.$I.DISTRIBUTOR];
-    const maxRetryCount = Options.Get.MaxDrainRetryCount(distributor);
-    const retryInterval = Options.Get.DrainRetryInterval(distributor);
+    const maxRetryCount = Options.getMaxDrainRetryCount(distributor);
+    const retryInterval = Options.getDrainRetryInterval(distributor);
     const state = { retry: 0, cause: null };
 
     while (!this[I.DROPPED]) {
@@ -133,11 +177,11 @@ class AbstractTransferrer extends Part.Abstract {
   }
 
   async [I.DRAIN]() {
-    if (this[I.DUMPING] !== null) {
-      await Promise.allSettled([this[I.DUMPING]]);
+    if (this[I.PREPARING] !== null) {
+      await Promise.allSettled([this[I.PREPARING]]);
     }
 
-    if (this[I.DUMPING_ERROR] !== null) {
+    if (this[I.PREPARING_ERROR] !== null) {
       this[I.DRAINING] = null;
 
       return;
@@ -148,7 +192,7 @@ class AbstractTransferrer extends Part.Abstract {
     //   chunks already queued stay put, for the queue still serves them.
     while (!this[I.DROPPED]) {
       const chunkLength = this[I.PENDING_CHUNKS].length;
-      const error = this[I.DUMPING_ERROR];
+      const error = this[I.PREPARING_ERROR];
 
       if (error !== null || chunkLength === 0) {
         break;
@@ -184,7 +228,7 @@ class AbstractTransferrer extends Part.Abstract {
     }
 
     const distributor = this[PART.$I.DISTRIBUTOR];
-    const warningLength = Options.Get.MaxBacklogWarningByteLength(distributor);
+    const warningLength = Options.getMaxBacklogWarningByteLength(distributor);
     const pendingByteLength = this[I.PENDING_BYTE_LENGTH];
 
     if (pendingByteLength > warningLength) {
@@ -227,8 +271,8 @@ class AbstractTransferrer extends Part.Abstract {
     }
   }
 
-  get dumping() {
-    return this[I.DUMPING];
+  get prepared() {
+    return this[I.PREPARING];
   }
 
   get done() {
@@ -242,11 +286,14 @@ class AbstractTransferrer extends Part.Abstract {
   get pendingByteLength() {
     return this[I.PENDING_BYTE_LENGTH];
   }
+
+  [_I.INITIALIZE]() {}
 }
 
 export default Abstract(
   AbstractTransferrer,
   Abstract({
+    [_I.INITIALIZE]: M.Method(),
     [_I.DUMP]: M.Method(),
     [_I.WRITE]: M.Method(),
     [_I.DROP]: M.Method(),

@@ -5,7 +5,7 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 import * as ChunkReader from '../ChunkReader/index.mjs';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_External.mjs';
-import * as Options from '../Options/index.mjs';
+import * as Options from './Options.mjs';
 import * as Warning from '../Warning.mjs';
 
 const CODE = Warning.CODES.DEGRADED_READER;
@@ -36,12 +36,12 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
 
   async [I.INITIALIZE]() {
     const distributor = this[PART.$I.DISTRIBUTOR];
-    const maxRetryCount = Options.Get.MaxInitializeRetryCount(distributor);
-    const retryInterval = Options.Get.InitializeRetryInterval(distributor);
+    const maxRetryCount = Options.getMaxInitializeRetryCount(distributor);
+    const retryInterval = Options.getInitializeRetryInterval(distributor);
     const state = { retry: 0, cause: null };
     let ok = false;
 
-    await this.transferrer.dumping;
+    await this.transferrer.prepared;
 
     while (!this[I.CLOSED]) {
       try {

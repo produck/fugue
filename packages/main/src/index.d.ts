@@ -3,6 +3,7 @@
  * what the distributor exposes.
  */
 
+declare const TRANSFERRER_INITIALIZE: unique symbol;
 declare const TRANSFERRER_DUMP: unique symbol;
 declare const TRANSFERRER_WRITE: unique symbol;
 declare const TRANSFERRER_DROP: unique symbol;
@@ -26,6 +27,8 @@ declare const DISTRIBUTOR_DEGRADED_CHUNK_READER_CTOR: unique symbol;
 export declare const SYMBOL: Readonly<{
   TRANSFERRER: Readonly<{
     _I: Readonly<{
+      INITIALIZE: typeof TRANSFERRER_INITIALIZE;
+
       DUMP: typeof TRANSFERRER_DUMP;
 
       WRITE: typeof TRANSFERRER_WRITE;
@@ -92,7 +95,8 @@ export type ReadableChunkResult<Chunk extends Uint8Array = Uint8Array> =
   { done: true; value?: undefined } | { done: false; value: Chunk };
 
 /**
- * The write side: take the captured stash, write one chunk, let the medium go.
+ * The write side: get ready, take the captured stash, write one chunk, let
+ * the medium go.
  *
  * Only the slots below are the subclass's business — the getters are the
  * framework's own bookkeeping.
@@ -106,10 +110,12 @@ export declare abstract class Transferrer<
   static [TRANSFERRER_S.PARSE_ARGUMENTS](args: unknown[]): unknown[];
 
   /**
-   * The dump in flight, or `null`. A reader awaits it before it trusts a
-   * position.
+   * The prepare in flight, or `null`. A reader awaits it before it trusts a
+   * position. Fulfilling means the attempt ended, not that the medium is
+   * ready: a failure is latched and surfaces on the next write or position
+   * wait.
    */
-  get dumping(): Promise<void> | null;
+  get prepared(): Promise<void> | null;
 
   /**
    * The source ended, so a reader waiting past the queue is answered at once.
@@ -123,6 +129,13 @@ export declare abstract class Transferrer<
 
   /** The bytes queued and not yet written. */
   get pendingByteLength(): number;
+
+  /**
+   * Get the medium ready, once, before anything is handed over. The default
+   * does nothing; a rejection is retried on its own budget, then latched, and
+   * the dump never runs.
+   */
+  [TRANSFERRER_I.INITIALIZE](): void | PromiseLike<void>;
 
   /** Hand the stash to the medium, whole. */
   abstract [TRANSFERRER_I.DUMP](
@@ -313,19 +326,19 @@ type OptionDefinitions = {
    * The stash may hold this many bytes before a pull degrades into the medium.
    * Read on every pull, by the degrade probe. Defaults to 1 GiB.
    */
-  MaxStashByteLength: number;
+  MaxChunkStashByteLength: number;
 
   /**
    * The queued bytes that make the transferrer report `transferrer-backlog`.
-   * Defaults to following `MaxStashByteLength`, read at every query.
+   * Defaults to following `MaxChunkStashByteLength`, read at every query.
    */
-  MaxBacklogWarningByteLength: number;
+  MaxTransferrerBacklogWarningByteLength: number;
 
   /**
    * Whether a stash that is both over the limit and complete still degrades.
    * Read by the same probe. Defaults to `false`.
    */
-  DegradeOnStashFullAndDone: boolean;
+  DegradeOnChunkStashFullAndDone: boolean;
 
   /**
    * The high water mark of every copy forked from now on. Read once per fork,
@@ -337,34 +350,46 @@ type OptionDefinitions = {
    * How many times an open that rejects is retried. Read once per reader
    * initialize. Defaults to `Infinity`.
    */
-  MaxInitializeRetryCount: number;
+  MaxChunkReaderInitializeRetryCount: number;
 
   /**
    * The pause between two open attempts, in milliseconds. Defaults to 1000.
    */
-  InitializeRetryInterval: number;
+  ChunkReaderInitializeRetryInterval: number;
+
+  /**
+   * How many times a medium that rejects its ready step is retried. Read once
+   * per transferrer initialize. Defaults to `Infinity`.
+   */
+  MaxTransferrerInitializeRetryCount: number;
+
+  /**
+   * The pause between two ready-step attempts, in milliseconds. Defaults to
+   * 1000.
+   */
+  TransferrerInitializeRetryInterval: number;
 
   /**
    * How many times a rejected dump is retried. Read once per dump. Defaults to
    * `Infinity`.
    */
-  MaxDumpRetryCount: number;
+  MaxTransferrerDumpRetryCount: number;
 
   /**
    * How many times a rejected write is retried. Read once per drained chunk.
    * Defaults to `Infinity`.
    */
-  MaxDrainRetryCount: number;
+  MaxTransferrerDrainRetryCount: number;
 
   /**
    * The pause between two dump attempts, in milliseconds. Defaults to 1000.
    */
-  DumpRetryInterval: number;
+  TransferrerDumpRetryInterval: number;
 
   /**
    * The pause between two write attempts, in milliseconds. Defaults to 1000.
    */
-  DrainRetryInterval: number;
+  TransferrerDrainRetryInterval: number;
 };
 
 export type OptionGetters = {
@@ -399,24 +424,26 @@ export declare namespace Options {
   const Get: Readonly<Get>;
 
   /**
-   * Presets over the three retry budgets: `no*` zeroes one budget, `unlimited*`
-   * opens it, and `noRetry` / `unlimitedRetry` do all three at once.
+   * Presets over the four retry budgets: `no*` zeroes one budget, `unlimited*`
+   * opens it, and `noRetry` / `unlimitedRetry` do all four at once.
    */
-  type AssetName =
+  type PresetName =
     | 'noInitializeRetry'
+    | 'noTransferrerInitializeRetry'
     | 'noDumpRetry'
     | 'noDrainRetry'
     | 'unlimitedInitializeRetry'
+    | 'unlimitedTransferrerInitializeRetry'
     | 'unlimitedDumpRetry'
     | 'unlimitedDrainRetry'
     | 'noRetry'
     | 'unlimitedRetry';
 
-  type Asset = {
-    [Name in AssetName]: <Chunk extends Uint8Array>(
+  type Preset = {
+    [Name in PresetName]: <Chunk extends Uint8Array>(
       distributor: Distributor<Chunk>,
     ) => void;
   };
 
-  const Asset: Readonly<Asset>;
+  const Preset: Readonly<Preset>;
 }

@@ -29,16 +29,21 @@ export class FileTransferrer extends Fugue.Transferrer {
     this.pathname = Parser.absolutePathname(pathname, 'args[0] as pathname');
   }
 
-  async [Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash) {
-    const buffer = Buffer.concat([...stash.chunks()].map(frameOf));
+  async [Fugue.SYMBOL.TRANSFERRER._I.INITIALIZE]() {
+    this.handle = await fs.promises.open(this.pathname, 'w');
 
-    if (this.handle === null) {
-      this.handle = await fs.promises.open(this.pathname, 'w');
-    }
-
+    // The driver abandons an attempt that raced the release, so an open lands
+    //   on a released transferrer only when the release arrived while this
+    //   open was in flight. Nothing drives that shape past this point; the
+    //   release stays, because the file is this medium's to remove.
+    /* c8 ignore next 3 */
     if (this.dropped) {
       return void (await this[I_CLOSE]());
     }
+  }
+
+  async [Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash) {
+    const buffer = Buffer.concat([...stash.chunks()].map(frameOf));
 
     await this.handle.write(buffer, 0, buffer.byteLength, 0);
     this.writtenByteLength = buffer.byteLength;

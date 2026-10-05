@@ -4,13 +4,13 @@ import * as _Distributor from './Distributor/index.mjs';
 
 const { DegradedChunkReader: _DegradedChunkReader } = _Distributor;
 const { Transferrer: _Transferrer } = _DegradedChunkReader;
-const { Tune, Get, Asset } = _Distributor.Options;
+const { Tune, Get, Preset } = _Distributor.Options;
 
 export const Distributor = _Distributor.Abstract;
 export const DegradedChunkReader = _DegradedChunkReader.Abstract;
 export const Transferrer = _Transferrer.Abstract;
 export const Event = _Distributor.Event;
-export const Options = { Tune, Get, Asset };
+export const Options = { Tune, Get, Preset };
 
 import * as DISTRIBUTOR from './Distributor/_Symbol.mjs';
 import * as DEGRADED_CHUNK_READER from './Distributor/DegradedChunkReader/_Symbol.mjs';

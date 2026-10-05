@@ -5,7 +5,7 @@ import * as Fugue from '@produck/fugue';
 
 import { drain, makeDistributor, settle } from '#test/baseline.mjs';
 
-const { Tune, Get, Asset } = Fugue.Options;
+const { Tune, Get, Preset } = Fugue.Options;
 
 const GIB = (1 << 10) ** 3;
 const LIMIT = Number.MAX_SAFE_INTEGER;
@@ -57,76 +57,78 @@ describe('Options', () => {
     it('should store a plain value as a constant', () => {
       const distributor = makeDistributor();
 
-      Tune.MaxStashByteLength(distributor, 8);
+      Tune.MaxChunkStashByteLength(distributor, 8);
 
-      assert.equal(Get.MaxStashByteLength(distributor), 8);
-      assert.equal(Get.MaxStashByteLength(distributor), 8);
+      assert.equal(Get.MaxChunkStashByteLength(distributor), 8);
+      assert.equal(Get.MaxChunkStashByteLength(distributor), 8);
     });
 
     it('should store a function as the getter itself', () => {
       const distributor = makeDistributor();
 
-      const derive = (options) => options.MaxStashByteLength(options) + 1;
+      const derive = (options) => options.MaxChunkStashByteLength(options) + 1;
 
-      Tune.MaxStashByteLength(distributor, 16);
-      Tune.MaxBacklogWarningByteLength(distributor, derive);
+      Tune.MaxChunkStashByteLength(distributor, 16);
+      Tune.MaxTransferrerBacklogWarningByteLength(distributor, derive);
 
-      assert.equal(Get.MaxBacklogWarningByteLength(distributor), 17);
+      assert.equal(Get.MaxTransferrerBacklogWarningByteLength(distributor), 17);
 
-      Tune.MaxStashByteLength(distributor, 20);
-      assert.equal(Get.MaxBacklogWarningByteLength(distributor), 21);
+      Tune.MaxChunkStashByteLength(distributor, 20);
+      assert.equal(Get.MaxTransferrerBacklogWarningByteLength(distributor), 21);
     });
 
     it('should refuse a value the item assert rejects', () => {
       const distributor = makeDistributor();
 
-      Tune.MaxStashByteLength(distributor, 4);
+      Tune.MaxChunkStashByteLength(distributor, 4);
 
-      const attempt = () => Tune.MaxStashByteLength(distributor, -1);
+      const attempt = () => Tune.MaxChunkStashByteLength(distributor, -1);
 
       assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
-      assert.equal(Get.MaxStashByteLength(distributor), 4);
+      assert.equal(Get.MaxChunkStashByteLength(distributor), 4);
     });
 
     it('should change only the instance it was given', () => {
       const first = makeDistributor();
       const second = makeDistributor();
 
-      Tune.MaxStashByteLength(first, 4);
+      Tune.MaxChunkStashByteLength(first, 4);
 
-      assert.equal(Get.MaxStashByteLength(first), 4);
-      assert.equal(Get.MaxStashByteLength(second), GIB);
+      assert.equal(Get.MaxChunkStashByteLength(first), 4);
+      assert.equal(Get.MaxChunkStashByteLength(second), GIB);
     });
 
-    describe('::MaxStashByteLength()', () => {
+    describe('::MaxChunkStashByteLength()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxStashByteLength(distributor, -1);
+        const attempt = () => Tune.MaxChunkStashByteLength(distributor, -1);
 
         assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
 
       it('should refuse a fractional value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxStashByteLength(distributor, 1.5);
+        const attempt = () => Tune.MaxChunkStashByteLength(distributor, 1.5);
 
         assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
     });
 
-    describe('::MaxBacklogWarningByteLength()', () => {
+    describe('::MaxTransferrerBacklogWarningByteLength()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxBacklogWarningByteLength(distributor, -1);
+        const attempt = () =>
+          Tune.MaxTransferrerBacklogWarningByteLength(distributor, -1);
 
         assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
     });
 
-    describe('::DegradeOnStashFullAndDone()', () => {
+    describe('::DegradeOnChunkStashFullAndDone()', () => {
       it('should refuse a value that is not a boolean', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.DegradeOnStashFullAndDone(distributor, 1);
+        const attempt = () =>
+          Tune.DegradeOnChunkStashFullAndDone(distributor, 1);
 
         assert.throws(attempt, EXPECTED.BOOLEAN);
       });
@@ -134,11 +136,11 @@ describe('Options', () => {
       it('should accept a boolean', () => {
         const distributor = makeDistributor();
 
-        Tune.DegradeOnStashFullAndDone(distributor, true);
-        assert.equal(Get.DegradeOnStashFullAndDone(distributor), true);
+        Tune.DegradeOnChunkStashFullAndDone(distributor, true);
+        assert.equal(Get.DegradeOnChunkStashFullAndDone(distributor), true);
 
-        Tune.DegradeOnStashFullAndDone(distributor, false);
-        assert.equal(Get.DegradeOnStashFullAndDone(distributor), false);
+        Tune.DegradeOnChunkStashFullAndDone(distributor, false);
+        assert.equal(Get.DegradeOnChunkStashFullAndDone(distributor), false);
       });
     });
 
@@ -177,17 +179,19 @@ describe('Options', () => {
         assert.equal(Get.ForkHighWaterMark(distributor), true);
       });
     });
-    describe('::MaxDumpRetryCount()', () => {
+    describe('::MaxTransferrerDumpRetryCount()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxDumpRetryCount(distributor, -1);
+        const attempt = () =>
+          Tune.MaxTransferrerDumpRetryCount(distributor, -1);
 
         assert.throws(attempt, EXPECTED.RETRY_COUNT);
       });
 
       it('should refuse a fractional value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxDumpRetryCount(distributor, 1.5);
+        const attempt = () =>
+          Tune.MaxTransferrerDumpRetryCount(distributor, 1.5);
 
         assert.throws(attempt, EXPECTED.RETRY_COUNT);
       });
@@ -195,32 +199,35 @@ describe('Options', () => {
       it('should accept Infinity', () => {
         const distributor = makeDistributor();
 
-        Tune.MaxDumpRetryCount(distributor, Infinity);
+        Tune.MaxTransferrerDumpRetryCount(distributor, Infinity);
 
-        assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+        assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
       });
     });
 
-    describe('::MaxDrainRetryCount()', () => {
+    describe('::MaxTransferrerDrainRetryCount()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxDrainRetryCount(distributor, -1);
+        const attempt = () =>
+          Tune.MaxTransferrerDrainRetryCount(distributor, -1);
 
         assert.throws(attempt, EXPECTED.RETRY_COUNT);
       });
 
       it('should refuse a fractional value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.MaxDrainRetryCount(distributor, 1.5);
+        const attempt = () =>
+          Tune.MaxTransferrerDrainRetryCount(distributor, 1.5);
 
         assert.throws(attempt, EXPECTED.RETRY_COUNT);
       });
     });
 
-    describe('::DumpRetryInterval()', () => {
+    describe('::TransferrerDumpRetryInterval()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.DumpRetryInterval(distributor, -1);
+        const attempt = () =>
+          Tune.TransferrerDumpRetryInterval(distributor, -1);
 
         assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
@@ -228,16 +235,17 @@ describe('Options', () => {
       it('should accept zero', () => {
         const distributor = makeDistributor();
 
-        Tune.DumpRetryInterval(distributor, 0);
+        Tune.TransferrerDumpRetryInterval(distributor, 0);
 
-        assert.equal(Get.DumpRetryInterval(distributor), 0);
+        assert.equal(Get.TransferrerDumpRetryInterval(distributor), 0);
       });
     });
 
-    describe('::DrainRetryInterval()', () => {
+    describe('::TransferrerDrainRetryInterval()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.DrainRetryInterval(distributor, -1);
+        const attempt = () =>
+          Tune.TransferrerDrainRetryInterval(distributor, -1);
 
         assert.throws(attempt, EXPECTED.NON_NEGATIVE_INTEGER);
       });
@@ -245,15 +253,15 @@ describe('Options', () => {
   });
 
   describe('::Get', () => {
-    describe('::MaxStashByteLength()', () => {
+    describe('::MaxChunkStashByteLength()', () => {
       it('should default to 1 GiB', () => {
-        assert.equal(Get.MaxStashByteLength(makeDistributor()), GIB);
+        assert.equal(Get.MaxChunkStashByteLength(makeDistributor()), GIB);
       });
 
       it('should be read on every pull', async () => {
         const chunks = ['a', 'b', 'c'];
         const distributor = makeDistributor(chunks);
-        const tune = Tune.MaxStashByteLength;
+        const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
         const forked = distributor.fork();
 
@@ -263,11 +271,11 @@ describe('Options', () => {
 
       it('should stop being read once the phase has flipped', async () => {
         const distributor = makeDistributor(['a', 'b', 'c']);
-        const tune = Tune.MaxStashByteLength;
+        const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, 0);
         const reader = distributor.fork().getReader();
 
-        Tune.MaxBacklogWarningByteLength(distributor, LIMIT);
+        Tune.MaxTransferrerBacklogWarningByteLength(distributor, LIMIT);
 
         await reader.read();
 
@@ -282,28 +290,37 @@ describe('Options', () => {
       });
     });
 
-    describe('::MaxBacklogWarningByteLength()', () => {
-      it('should default to what MaxStashByteLength answers', () => {
-        assert.equal(Get.MaxBacklogWarningByteLength(makeDistributor()), GIB);
+    describe('::MaxTransferrerBacklogWarningByteLength()', () => {
+      it('should default to what MaxChunkStashByteLength answers', () => {
+        assert.equal(
+          Get.MaxTransferrerBacklogWarningByteLength(makeDistributor()),
+          GIB,
+        );
       });
 
-      it('should follow MaxStashByteLength when it moves', () => {
+      it('should follow MaxChunkStashByteLength when it moves', () => {
         const distributor = makeDistributor();
 
-        Tune.MaxStashByteLength(distributor, 5);
-        assert.equal(Get.MaxBacklogWarningByteLength(distributor), 5);
+        Tune.MaxChunkStashByteLength(distributor, 5);
+        assert.equal(
+          Get.MaxTransferrerBacklogWarningByteLength(distributor),
+          5,
+        );
 
-        Tune.MaxStashByteLength(distributor, 9);
-        assert.equal(Get.MaxBacklogWarningByteLength(distributor), 9);
+        Tune.MaxChunkStashByteLength(distributor, 9);
+        assert.equal(
+          Get.MaxTransferrerBacklogWarningByteLength(distributor),
+          9,
+        );
       });
 
       it('should be read after every write to the medium', async () => {
         const distributor = makeDistributor(['a', 'b', 'c']);
-        const tune = Tune.MaxBacklogWarningByteLength;
+        const tune = Tune.MaxTransferrerBacklogWarningByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
         const reader = distributor.fork().getReader();
 
-        Tune.MaxStashByteLength(distributor, 0);
+        Tune.MaxChunkStashByteLength(distributor, 0);
 
         await reader.read();
 
@@ -317,42 +334,23 @@ describe('Options', () => {
       });
     });
 
-    describe('::DegradeOnStashFullAndDone()', () => {
+    describe('::DegradeOnChunkStashFullAndDone()', () => {
       it('should default to false', () => {
-        assert.equal(Get.DegradeOnStashFullAndDone(makeDistributor()), false);
+        assert.equal(
+          Get.DegradeOnChunkStashFullAndDone(makeDistributor()),
+          false,
+        );
       });
 
-      it('should not be read while over the limit but not done', async () => {
-        const distributor = makeDistributor(['a', 'b']);
-        const tune = Tune.DegradeOnStashFullAndDone;
+      it('should be read on every pull', async () => {
+        const chunks = ['a', 'b', 'c'];
+        const distributor = makeDistributor(chunks);
+        const tune = Tune.DegradeOnChunkStashFullAndDone;
         const reads = countGetterReads(distributor, tune, true);
-        const reader = distributor.fork().getReader();
+        const forked = distributor.fork();
 
-        Tune.MaxStashByteLength(distributor, 0);
-
-        await reader.read();
-
-        assert.equal(distributor.degraded, true);
-        assert.equal(reads(), 0);
-      });
-
-      it('should be read once over the limit and done', async () => {
-        const distributor = makeDistributor(['a']);
-        const tune = Tune.DegradeOnStashFullAndDone;
-        const reads = countGetterReads(distributor, tune, true);
-        const reader = distributor.fork().getReader();
-
-        Tune.MaxStashByteLength(distributor, 1);
-
-        await reader.read();
-        assert.equal(distributor.degraded, false);
-
-        Tune.MaxStashByteLength(distributor, 0);
-
-        await reader.read();
-
-        assert.equal(distributor.degraded, true);
-        assert.equal(reads(), 1);
+        assert.deepEqual(await drain(forked), chunks);
+        assert.equal(reads(), chunks.length + 1);
       });
     });
 
@@ -374,7 +372,7 @@ describe('Options', () => {
 
       it('should be the queue depth of a fork', async () => {
         const distributor = makeDistributor(['a', 'b', 'c', 'd', 'e']);
-        const tune = Tune.MaxStashByteLength;
+        const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
 
         Tune.ForkHighWaterMark(distributor, 3);
@@ -396,7 +394,7 @@ describe('Options', () => {
 
         Tune.ForkHighWaterMark(distributor, 1);
 
-        const tune = Tune.MaxStashByteLength;
+        const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
         const reader = distributor.fork().getReader();
 
@@ -421,69 +419,103 @@ describe('Options', () => {
       });
     });
 
-    describe('::MaxDumpRetryCount()', () => {
+    describe('::MaxTransferrerDumpRetryCount()', () => {
       it('should default to Infinity', () => {
-        assert.equal(Get.MaxDumpRetryCount(makeDistributor()), Infinity);
+        assert.equal(
+          Get.MaxTransferrerDumpRetryCount(makeDistributor()),
+          Infinity,
+        );
       });
     });
 
-    describe('::MaxDrainRetryCount()', () => {
+    describe('::MaxTransferrerDrainRetryCount()', () => {
       it('should default to Infinity', () => {
-        assert.equal(Get.MaxDrainRetryCount(makeDistributor()), Infinity);
+        assert.equal(
+          Get.MaxTransferrerDrainRetryCount(makeDistributor()),
+          Infinity,
+        );
       });
     });
 
-    describe('::DumpRetryInterval()', () => {
+    describe('::TransferrerDumpRetryInterval()', () => {
       it('should default to 1 second', () => {
-        assert.equal(Get.DumpRetryInterval(makeDistributor()), 1e3);
+        assert.equal(Get.TransferrerDumpRetryInterval(makeDistributor()), 1e3);
       });
     });
 
-    describe('::DrainRetryInterval()', () => {
+    describe('::TransferrerDrainRetryInterval()', () => {
       it('should default to 1 second', () => {
-        assert.equal(Get.DrainRetryInterval(makeDistributor()), 1e3);
+        assert.equal(Get.TransferrerDrainRetryInterval(makeDistributor()), 1e3);
       });
     });
   });
 
-  describe('::Asset', () => {
+  describe('::Preset', () => {
     it('should answer the retry counts of one side', () => {
       const distributor = makeDistributor();
 
-      Asset.noInitializeRetry(distributor);
-      assert.equal(Get.MaxInitializeRetryCount(distributor), 0);
+      Preset.noInitializeRetry(distributor);
+      assert.equal(Get.MaxChunkReaderInitializeRetryCount(distributor), 0);
 
-      Asset.unlimitedInitializeRetry(distributor);
-      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
+      Preset.unlimitedInitializeRetry(distributor);
+      assert.equal(
+        Get.MaxChunkReaderInitializeRetryCount(distributor),
+        Infinity,
+      );
 
-      Asset.noDumpRetry(distributor);
-      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
-      assert.equal(Get.MaxDumpRetryCount(distributor), 0);
-      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
+      Preset.noTransferrerInitializeRetry(distributor);
+      assert.equal(Get.MaxTransferrerInitializeRetryCount(distributor), 0);
+      assert.equal(
+        Get.MaxChunkReaderInitializeRetryCount(distributor),
+        Infinity,
+      );
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
 
-      Asset.unlimitedDumpRetry(distributor);
-      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
+      Preset.unlimitedTransferrerInitializeRetry(distributor);
+      assert.equal(
+        Get.MaxTransferrerInitializeRetryCount(distributor),
+        Infinity,
+      );
 
-      Asset.noDrainRetry(distributor);
-      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
-      assert.equal(Get.MaxDrainRetryCount(distributor), 0);
+      Preset.noDumpRetry(distributor);
+      assert.equal(
+        Get.MaxChunkReaderInitializeRetryCount(distributor),
+        Infinity,
+      );
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), 0);
+      assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), Infinity);
 
-      Asset.unlimitedDrainRetry(distributor);
-      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
+      Preset.unlimitedDumpRetry(distributor);
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
+
+      Preset.noDrainRetry(distributor);
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
+      assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), 0);
+
+      Preset.unlimitedDrainRetry(distributor);
+      assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), Infinity);
     });
 
     it('should answer the retry counts of both sides', () => {
       const distributor = makeDistributor();
 
-      Asset.noRetry(distributor);
-      assert.equal(Get.MaxInitializeRetryCount(distributor), 0);
-      assert.equal(Get.MaxDumpRetryCount(distributor), 0);
-      assert.equal(Get.MaxDrainRetryCount(distributor), 0);
+      Preset.noRetry(distributor);
+      assert.equal(Get.MaxChunkReaderInitializeRetryCount(distributor), 0);
+      assert.equal(Get.MaxTransferrerInitializeRetryCount(distributor), 0);
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), 0);
+      assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), 0);
 
-      Asset.unlimitedRetry(distributor);
-      assert.equal(Get.MaxInitializeRetryCount(distributor), Infinity);
-      assert.equal(Get.MaxDumpRetryCount(distributor), Infinity);
-      assert.equal(Get.MaxDrainRetryCount(distributor), Infinity);
+      Preset.unlimitedRetry(distributor);
+      assert.equal(
+        Get.MaxChunkReaderInitializeRetryCount(distributor),
+        Infinity,
+      );
+      assert.equal(
+        Get.MaxTransferrerInitializeRetryCount(distributor),
+        Infinity,
+      );
+      assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
+      assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), Infinity);
     });
   });
 });

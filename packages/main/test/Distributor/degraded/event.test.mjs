@@ -14,7 +14,7 @@ it('should dispatch the degrade event on the crossing pull', async () => {
     details.push(event.detail);
   });
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 1);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 1);
 
   await reader.read();
   assert.deepEqual(details, []);
@@ -33,7 +33,7 @@ it('should dispatch the degrade event with degraded already true', async () => {
     seen.push(distributor.degraded);
   });
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await reader.read();
 
@@ -47,7 +47,7 @@ it('should not dispatch the degrade event again on later pulls', async () => {
 
   distributor.addEventListener('degrade', () => count++);
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   await reader.read();
   await reader.read();

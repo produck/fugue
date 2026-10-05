@@ -38,8 +38,8 @@ describe('ForkedReadableStream', () => {
         const distributor = new family.Distributor(makeSource(['a']));
         const reader = distributor.fork().getReader();
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-        Fugue.Options.Asset.noRetry(distributor);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+        Fugue.Options.Preset.noRetry(distributor);
 
         assert.equal((await reader.read()).value.toString(), 'a');
         await assert.rejects(reader.read(), cause);
@@ -58,9 +58,12 @@ describe('ForkedReadableStream', () => {
         const distributor = new family.Distributor(makeSource(['a', 'b']));
         const reader = distributor.fork().getReader();
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-        Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
-        Fugue.Options.Asset.noRetry(distributor);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+          distributor,
+          1024,
+        );
+        Fugue.Options.Preset.noRetry(distributor);
 
         assert.equal((await reader.read()).value.toString(), 'a');
         assert.equal((await reader.read()).value.toString(), 'b');
@@ -78,7 +81,7 @@ describe('ForkedReadableStream', () => {
         const forked = distributor.fork();
         const reader = forked.getReader();
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
         const first = await reader.read();
 
@@ -102,7 +105,7 @@ describe('ForkedReadableStream', () => {
         let settled = false;
 
         distributor.fork().getReader().read();
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
         await settle();
 
@@ -220,7 +223,7 @@ describe('ForkedReadableStream', () => {
           warns.push(event.detail);
         });
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, () => {
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, () => {
           if (reads++ === 0) {
             return 8;
           }
@@ -256,8 +259,11 @@ describe('ForkedReadableStream', () => {
           warns.push(event.detail);
         });
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-        Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, 1024);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+          distributor,
+          1024,
+        );
 
         await reader.read();
         await assert.rejects(reader.read(), cause);
@@ -288,7 +294,7 @@ describe('ForkedReadableStream', () => {
         });
 
         await reader.read();
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
         await assert.rejects(reader.read(), cause);
 
@@ -317,7 +323,7 @@ describe('ForkedReadableStream', () => {
           warns.push(event.detail);
         });
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
         await drain(forked);
         await settle();
@@ -348,7 +354,7 @@ describe('ForkedReadableStream', () => {
         const distributor = new family.Distributor(makeSource(['a', 'b']));
         const reader = distributor.fork().getReader();
 
-        Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+        Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
         assert.equal((await reader.read()).value.toString(), 'a');
         await assert.rejects(reader.read(), cause);
@@ -374,7 +380,7 @@ describe('ForkedReadableStream', () => {
           const distributor = new family.Distributor(makeSource(['a', 'b']));
           const reading = distributor.fork().getReader();
 
-          Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+          Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
           await reading.read();
           await assert.rejects(reading.read(), { name: 'TypeError' });

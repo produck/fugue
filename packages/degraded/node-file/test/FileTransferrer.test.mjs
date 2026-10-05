@@ -40,7 +40,7 @@ describe('FileTransferrer', () => {
       const distributor = new family.Distributor(makeSource(['a']));
 
       distributor.setTransferrerArgs(path);
-      Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+      Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
       assert.deepEqual(await drain(distributor.fork()), ['a']);
 
@@ -88,9 +88,9 @@ describe('FileTransferrer', () => {
     const distributor = new family.Distributor(makeSource(['a', 'b']));
 
     distributor.setTransferrerArgs(path);
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-    Fugue.Options.Tune.MaxDrainRetryCount(distributor, 1);
-    Fugue.Options.Tune.DrainRetryInterval(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxTransferrerDrainRetryCount(distributor, 1);
+    Fugue.Options.Tune.TransferrerDrainRetryInterval(distributor, 0);
 
     assert.deepEqual(await drain(distributor.fork()), ['a', 'b']);
 

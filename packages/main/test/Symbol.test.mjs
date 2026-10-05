@@ -12,7 +12,7 @@ const OPENED = {
     _S: ['TRANSFERRER_CTOR'],
   },
   TRANSFERRER: {
-    _I: ['DROP', 'DUMP', 'WRITE'],
+    _I: ['DROP', 'DUMP', 'INITIALIZE', 'WRITE'],
     _S: ['PARSE_ARGUMENTS'],
   },
 };

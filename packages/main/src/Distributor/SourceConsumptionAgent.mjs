@@ -61,12 +61,14 @@ export default class SourceConsumptionAgent extends Part.Abstract {
   degradeIfNeeded() {
     const distributor = this[PART.$I.DISTRIBUTOR];
     const stash = distributor[A.$I.STASH];
+    const stashLimit = Options.Get.MaxChunkStashByteLength(distributor);
+    const should = Options.Get.DegradeOnChunkStashFullAndDone(distributor);
 
-    if (stash.byteLength <= Options.Get.MaxStashByteLength(distributor)) {
+    if (stash.byteLength <= stashLimit) {
       return;
     }
 
-    if (stash.done && !Options.Get.DegradeOnStashFullAndDone(distributor)) {
+    if (stash.done && !should) {
       return;
     }
 

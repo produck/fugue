@@ -34,7 +34,7 @@ const makeSpooling = (chunks, bases) => {
   const family = makeFamily(bases);
   const distributor = new family.Distributor(makeSource(chunks));
 
-  Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
   return { distributor, family };
 };

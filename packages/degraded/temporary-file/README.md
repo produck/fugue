@@ -5,7 +5,7 @@
 > `@produck/fugue-degraded-node-file`.
 
 The distributor spills to a medium once its stash grows past
-`MaxStashByteLength`. This package is that medium for a host with no
+`MaxChunkStashByteLength`. This package is that medium for a host with no
 opinion about where the spool goes: it names its own file under the OS
 temporary directory, and the release removes it, so nothing of the spool
 is left behind.
@@ -35,7 +35,7 @@ class UploadDistributor extends Fugue.Distributor {
 
 const distributor = new UploadDistributor(source);
 
-Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 64 * 1024 * 1024);
 
 const copy = distributor.fork();
 ```
@@ -46,7 +46,7 @@ const copy = distributor.fork();
   `generateFileName()`: `fugue-<uuid>.tmp` by default, picked when the medium
   is built, so concurrent distributors never collide. The medium's `pathname`
   tells you which one it got.
-- Nothing is written until the stash crosses `MaxStashByteLength`.
+- Nothing is written until the stash crosses `MaxChunkStashByteLength`.
 - `destroy()` releases the medium: the handle is closed and the file is
   removed.
 

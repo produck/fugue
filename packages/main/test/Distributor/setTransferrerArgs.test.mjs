@@ -33,7 +33,7 @@ describe('.setTransferrerArgs()', () => {
     const reader = distributor.fork().getReader();
 
     distributor.setTransferrerArgs('x', 'y');
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -47,7 +47,7 @@ describe('.setTransferrerArgs()', () => {
     const reader = distributor.fork().getReader();
 
     distributor.setTransferrerArgs('x', 'y');
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -64,7 +64,7 @@ describe('.setTransferrerArgs()', () => {
 
     assert.equal(family.created.length, 0);
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
     await reader.read();
 
@@ -75,7 +75,7 @@ describe('.setTransferrerArgs()', () => {
     const distributor = new TestDistributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
     await reader.read();
 

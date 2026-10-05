@@ -10,16 +10,18 @@ describe('.options', () => {
     const distributor = new TestDistributor(makeSource());
     const snapshot = distributor.options;
     const items = [
-      'DegradeOnStashFullAndDone',
-      'DrainRetryInterval',
-      'DumpRetryInterval',
+      'ChunkReaderInitializeRetryInterval',
+      'DegradeOnChunkStashFullAndDone',
       'ForkHighWaterMark',
-      'InitializeRetryInterval',
-      'MaxBacklogWarningByteLength',
-      'MaxDrainRetryCount',
-      'MaxDumpRetryCount',
-      'MaxInitializeRetryCount',
-      'MaxStashByteLength',
+      'MaxChunkReaderInitializeRetryCount',
+      'MaxChunkStashByteLength',
+      'MaxTransferrerBacklogWarningByteLength',
+      'MaxTransferrerDrainRetryCount',
+      'MaxTransferrerDumpRetryCount',
+      'MaxTransferrerInitializeRetryCount',
+      'TransferrerDrainRetryInterval',
+      'TransferrerDumpRetryInterval',
+      'TransferrerInitializeRetryInterval',
     ];
 
     assert.deepEqual(Object.keys(snapshot).sort(), items);
@@ -38,8 +40,8 @@ describe('.options', () => {
   it('should answer what Tune wrote', () => {
     const distributor = new TestDistributor(makeSource());
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 4);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 4);
 
-    assert.equal(distributor.options.MaxStashByteLength, 4);
+    assert.equal(distributor.options.MaxChunkStashByteLength, 4);
   });
 });

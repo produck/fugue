@@ -32,8 +32,8 @@ describe('.getWarningCount()', () => {
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-    Fugue.Options.Asset.noRetry(distributor);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+    Fugue.Options.Preset.noRetry(distributor);
 
     await reader.read().catch(() => {});
     await settle();
@@ -67,9 +67,9 @@ describe('.getWarningCount()', () => {
     const distributor = new family.Distributor(makeSource(['a']));
     const reader = distributor.fork().getReader();
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-    Fugue.Options.Tune.MaxDumpRetryCount(distributor, 1);
-    Fugue.Options.Tune.DumpRetryInterval(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxTransferrerDumpRetryCount(distributor, 1);
+    Fugue.Options.Tune.TransferrerDumpRetryInterval(distributor, 0);
 
     const reading = reader.read().catch(() => {});
 

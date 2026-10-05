@@ -1,7 +1,7 @@
 import { deepFreeze } from '@produck/deep-freeze-enumerable';
 
-const I_DUMPING = Symbol('.#dumping');
-const I_DUMPING_ERROR = Symbol('.#dumpingError');
+const I_PREPARING = Symbol('.#preparing');
+const I_PREPARING_ERROR = Symbol('.#preparingError');
 const I_PENDING_CHUNKS = Symbol('.#pendingChunks');
 const I_WRITTEN_CHUNK_COUNT = Symbol('.#writtenChunkCount');
 const I_PENDING_BYTE_LENGTH = Symbol('.#pendingByteLength');
@@ -13,12 +13,14 @@ const I_DRAIN_HEAD = Symbol('.#drainHead()');
 const I_ERROR = Symbol('.#error');
 const I_DONE = Symbol('.#done');
 const I_DROPPED = Symbol('.#dropped');
+const I_INITIALIZE = Symbol('.#initialize()');
+const I_PREPARE = Symbol('.#prepare()');
 const I_DUMP = Symbol('.#dump()');
 const I_SETTLE = Symbol('.#settle()');
 
 export const I = deepFreeze({
-  DUMPING: I_DUMPING,
-  DUMPING_ERROR: I_DUMPING_ERROR,
+  PREPARING: I_PREPARING,
+  PREPARING_ERROR: I_PREPARING_ERROR,
   PENDING_CHUNKS: I_PENDING_CHUNKS,
   WRITTEN_CHUNK_COUNT: I_WRITTEN_CHUNK_COUNT,
   PENDING_BYTE_LENGTH: I_PENDING_BYTE_LENGTH,
@@ -30,11 +32,13 @@ export const I = deepFreeze({
   ERROR: I_ERROR,
   DONE: I_DONE,
   DROPPED: I_DROPPED,
+  INITIALIZE: I_INITIALIZE,
+  PREPARE: I_PREPARE,
   DUMP: I_DUMP,
   SETTLE: I_SETTLE,
 });
 
-const $I_DUMP = Symbol('.$dump()');
+const $I_PREPARE = Symbol('.$prepare()');
 const $I_WRITE = Symbol('.$write()');
 const $I_SET_DONE = Symbol('.$setDone()');
 const $I_WAIT_POSITION = Symbol('.$waitPosition()');
@@ -42,7 +46,7 @@ const $I_PEEK = Symbol('.$peek()');
 const $I_DROP = Symbol('.$drop()');
 
 export const $I = deepFreeze({
-  DUMP: $I_DUMP,
+  PREPARE: $I_PREPARE,
   WRITE: $I_WRITE,
   SET_DONE: $I_SET_DONE,
   WAIT_POSITION: $I_WAIT_POSITION,
@@ -50,11 +54,13 @@ export const $I = deepFreeze({
   DROP: $I_DROP,
 });
 
+const _I_INITIALIZE = Symbol('._initialize()');
 const _I_DUMP = Symbol('._dump()');
 const _I_WRITE = Symbol('._write()');
 const _I_DROP = Symbol('._drop()');
 
 export const _I = deepFreeze({
+  INITIALIZE: _I_INITIALIZE,
   DUMP: _I_DUMP,
   WRITE: _I_WRITE,
   DROP: _I_DROP,

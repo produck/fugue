@@ -4,7 +4,7 @@
 > `@produck/fugue`, on Node's file system.
 
 The distributor spills to a medium once its stash grows past
-`MaxStashByteLength`. This package is that medium for Node: framed records
+`MaxChunkStashByteLength`. This package is that medium for Node: framed records
 in the file the host names, bare `node:fs` underneath, and
 `@produck/type-error` for the arguments it refuses.
 
@@ -29,7 +29,7 @@ class UploadDistributor extends Fugue.Distributor {
 const distributor = new UploadDistributor(source);
 
 distributor.setTransferrerArgs('/var/tmp/upload.spool');
-Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 64 * 1024 * 1024);
 
 const copy = distributor.fork();
 ```
@@ -39,7 +39,7 @@ const copy = distributor.fork();
 - The path comes from `setTransferrerArgs(path)`, it must be absolute,
   and a distributor without one cannot build the medium. It is read
   once, when the medium is built, so set it before the first read.
-- Nothing is written until the stash crosses `MaxStashByteLength`.
+- Nothing is written until the stash crosses `MaxChunkStashByteLength`.
 - `destroy()` releases the medium: the handle is closed and the file the
   medium created is removed. A host that wants the spool afterwards must
   copy it before destroying.

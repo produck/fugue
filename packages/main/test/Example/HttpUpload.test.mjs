@@ -147,7 +147,7 @@ const spoolUpload = async (request, response, state) => {
   const hash = createHash('sha256');
 
   distributor.setTransferrerArgs(state.spool);
-  Fugue.Options.Tune.MaxStashByteLength(distributor, STASH_LIMIT);
+  Fugue.Options.Tune.MaxChunkStashByteLength(distributor, STASH_LIMIT);
 
   state.distributor = distributor;
 

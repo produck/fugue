@@ -185,15 +185,19 @@ Promise"这一事实：
     具体 reader 类静态声明写侧类 `_S.TRANSFERRER_CTOR`；实例
     由分发器在降级时构造并持有，交接给各拷贝读器（不再一次性守卫）。
   - **位置门（2026-09-16 取代 `chunkStashDumping`）**：读路径每次
-    `$I.WAIT_POSITION($I.CONSUMED_CHUNK_COUNT)`；初始化链先 `await dumping`
-    （整份转移落地）再跑 `_I.INITIALIZE`。`get dumping` 是公开观察面，
+    `$I.WAIT_POSITION($I.CONSUMED_CHUNK_COUNT)`；初始化链先 `await prepared`
+    （整份转移落地）再跑 `_I.INITIALIZE`。`get prepared` 是公开观察面，
     可读性不依赖它。
   - **不设 `_I.OPEN`**（已认可）：`OPEN` 是文件类降级的领域术语，
     抽象初始化 `_I.INITIALIZE` 已包含 open 概念。
 - **`AbstractTransferrer`（写侧内部抽象，2026-09-07 定稿）**：
-  - 受保护实例 `$I.DUMP(chunkStash)`：与 stash 绑定的时刻，**同步返回**；
-    微任务里调抽象 `_I.DUMP`，成功则由**本实例** `DROP` 载体并把水位推
-    满；失败闩 `I.DUMPING_ERROR`、结算门、保留现场（接管的
+  - 受保护实例 `$I.PREPARE(chunkStash)`：与 stash 绑定的时刻，**同步返回**；
+    微任务里先跑就绪段（2026-10-05 起：`_I.INITIALIZE` 默认空实现，自成
+    一段、有自己的预算与报文，就绪不再兼在 `_I.DUMP` 里；两段合称
+    **prepare 阶段**，就绪用尽则闩错、dump 不跑）再调抽象 `_I.DUMP`，
+    成功则由**本实例**
+    `DROP` 载体并把水位推
+    满；失败闩 `I.PREPARING_ERROR`、结算门、保留现场（接管的
     这批仍在队列里照发），返回的 Promise 以转义错误拒给分发器挂 `warn`。
   - 抽象实例 `_I.DUMP`（下游实现）：**靠参数拿到 `chunkStash`**，
     负责转存 ChunkStash 到降级目标，返回 PromiseOr。
@@ -201,7 +205,7 @@ Promise"这一事实：
     `_I.WRITE(buffer)` 由单飞 drain 按 FIFO 调用。
   - 受保护实例 `$I.SET_DONE()`：源已尽在降级相位的一次落点。
   - 实例为纯内部对象：不开公开观察面（调试看符号）；家族只经
-    `get dumping` 与 `$I` 原语交互——1:1 于
+    `get prepared` 与 `$I` 原语交互——1:1 于
     stash，故为普通字段而非 WeakMap / WeakSet。
   - **Degraded 自定义资源由策略自持**（2026-09-15 放宽）：实例与
     stash 1:1，转存产物可留在实例自己的字段里（原为策略自备

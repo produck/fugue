@@ -41,9 +41,9 @@ A distributor lives in two phases.
 captured bytes in a stash. Every fork is answered from that stash, so
 copies never compete for a byte and never block each other. The stash
 holds everything from the first byte — nothing is trimmed — which is what
-`MaxStashByteLength` is for.
+`MaxChunkStashByteLength` is for.
 
-**Degraded.** When the stash grows past `MaxStashByteLength`, the
+**Degraded.** When the stash grows past `MaxChunkStashByteLength`, the
 distributor switches to your medium in the same tick: it builds your
 `Transferrer`, hands it the whole stash (`DUMP`), and gives every live
 copy a `DegradedChunkReader` seeded with that copy's own position. From
@@ -56,7 +56,7 @@ reads back through your reader. Its position is private to it, and the
 framework catches the medium's cursor up before each read back.
 
 A source that ends while still under the limit never degrades — unless
-`DegradeOnStashFullAndDone` asks for it.
+`DegradeOnChunkStashFullAndDone` asks for it.
 
 ## Install
 
@@ -193,11 +193,11 @@ class UploadDistributor extends Fugue.Distributor {
 const distributor = new UploadDistributor(source);
 
 distributor.setTransferrerArgs('/var/tmp/upload.spool');
-Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 64 * 1024 * 1024);
 ```
 
 - The pathname must be absolute, and it is the medium's only argument.
-- Nothing is written until the stash crosses `MaxStashByteLength`.
+- Nothing is written until the stash crosses `MaxChunkStashByteLength`.
 - `destroy()` releases the medium: the handle is closed and the file the
   medium created is removed.
 - Its own manual covers the record format and the two classes.
@@ -334,36 +334,44 @@ degrades into. A subclass that leaves it empty fails at `fork()` with
 Every option is read at a defined moment, so a distributor can change
 behaviour while it runs.
 
-| Option                        | Default       | Read                   |
-| ----------------------------- | ------------- | ---------------------- |
-| `MaxStashByteLength`          | 1 GiB         | on every pull          |
-| `MaxBacklogWarningByteLength` | same as above | after every write      |
-| `DegradeOnStashFullAndDone`   | `false`       | on every pull          |
-| `ForkHighWaterMark`           | `1`           | once per fork          |
-| `MaxInitializeRetryCount`     | `Infinity`    | per initialize attempt |
-| `InitializeRetryInterval`     | `1000` ms     | per initialize attempt |
-| `MaxDumpRetryCount`           | `Infinity`    | per dump attempt       |
-| `DumpRetryInterval`           | `1000` ms     | per dump attempt       |
-| `MaxDrainRetryCount`          | `Infinity`    | per drained chunk      |
-| `DrainRetryInterval`          | `1000` ms     | per drained chunk      |
+| Option                                   | Default    |
+| ---------------------------------------- | ---------- |
+| `MaxChunkStashByteLength`                | 1 GiB      |
+| `MaxTransferrerBacklogWarningByteLength` | as above   |
+| `DegradeOnChunkStashFullAndDone`         | `false`    |
+| `ForkHighWaterMark`                      | `1`        |
+| `MaxChunkReaderInitializeRetryCount`     | `Infinity` |
+| `ChunkReaderInitializeRetryInterval`     | `1000` ms  |
+| `MaxTransferrerInitializeRetryCount`     | `Infinity` |
+| `TransferrerInitializeRetryInterval`     | `1000` ms  |
+| `MaxTransferrerDumpRetryCount`           | `Infinity` |
+| `TransferrerDumpRetryInterval`           | `1000` ms  |
+| `MaxTransferrerDrainRetryCount`          | `Infinity` |
+| `TransferrerDrainRetryInterval`          | `1000` ms  |
 
 What they mean:
 
-- `MaxStashByteLength` — how much the captured stash may hold before a
-  pull degrades into the medium.
-- `MaxBacklogWarningByteLength` — the queued bytes that make the
-  transferrer report `transferrer-backlog`.
-- `DegradeOnStashFullAndDone` — whether a stash that is both over the
+- `MaxChunkStashByteLength` — how much the captured stash may hold before a
+  pull degrades into the medium. Read on every pull.
+- `MaxTransferrerBacklogWarningByteLength` — the queued bytes that make the
+  transferrer report `transferrer-backlog`. Read after every write.
+- `DegradeOnChunkStashFullAndDone` — whether a stash that is both over the
   limit and complete still degrades. Left `false`, a source that ends
-  under the limit stays in memory.
+  under the limit stays in memory. Read on every pull.
 - `ForkHighWaterMark` — the high water mark of every copy forked from now
-  on. A live copy keeps the value it was forked with.
-- `MaxInitializeRetryCount` and `InitializeRetryInterval` — the budget
-  and the pause of one `INITIALIZE`.
-- `MaxDumpRetryCount` and `DumpRetryInterval` — the budget and the pause
-  of one `DUMP`.
-- `MaxDrainRetryCount` and `DrainRetryInterval` — the budget and the pause
-  of one `WRITE`.
+  on. A live copy keeps the value it was forked with. Read once per fork.
+- `MaxChunkReaderInitializeRetryCount` and
+  `ChunkReaderInitializeRetryInterval` — the budget and the pause of one
+  copy's `INITIALIZE`. Read once per initialize.
+- `MaxTransferrerInitializeRetryCount` and
+  `TransferrerInitializeRetryInterval` — the budget and the pause of the
+  medium's `INITIALIZE`, the ready step every dump waits for. A medium that
+  cannot be opened is not a medium that failed to write: it has its own
+  budget, its own pause and its own report. Read once per ready step.
+- `MaxTransferrerDumpRetryCount` and `TransferrerDumpRetryInterval` — the
+  budget and the pause of one `DUMP`. Read once per dump.
+- `MaxTransferrerDrainRetryCount` and `TransferrerDrainRetryInterval` —
+  the budget and the pause of one `WRITE`. Read once per drained chunk.
 
 Three ways to reach them.
 
@@ -371,17 +379,21 @@ Three ways to reach them.
 
 Sets one option. `value` is either a value or a getter
 `(options) => value`, read at every use — so one option can follow
-another. The default of `MaxBacklogWarningByteLength` is exactly that:
+another. The default of `MaxTransferrerBacklogWarningByteLength` is
+exactly that:
 
 ```js
-Fugue.Options.Tune.MaxStashByteLength(distributor, 64 * 1024 * 1024);
+Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 64 * 1024 * 1024);
 
-Fugue.Options.Tune.MaxBacklogWarningByteLength(distributor, (options) => {
-  return options.MaxStashByteLength(options) / 2;
-});
+Fugue.Options.Tune.MaxTransferrerBacklogWarningByteLength(
+  distributor,
+  (options) => {
+    return options.MaxChunkStashByteLength(options) / 2;
+  },
+);
 
-Fugue.Options.Tune.MaxDrainRetryCount(distributor, (options) => {
-  return options.MaxDumpRetryCount(options);
+Fugue.Options.Tune.MaxTransferrerDrainRetryCount(distributor, (options) => {
+  return options.MaxTransferrerDumpRetryCount(options);
 });
 ```
 
@@ -393,26 +405,28 @@ An invalid value throws.
 Reads one option now.
 
 ```js
-const limit = Fugue.Options.Get.MaxStashByteLength(distributor);
+const limit = Fugue.Options.Get.MaxChunkStashByteLength(distributor);
 ```
 
-### `Fugue.Options.Asset.<name>(distributor)`
+### `Fugue.Options.Preset.<name>(distributor)`
 
-Presets over the three retry budgets.
+Presets over the four retry budgets.
 
-| Preset                     | Effect                     |
-| -------------------------- | -------------------------- |
-| `noInitializeRetry`        | zero the initialize budget |
-| `noDumpRetry`              | zero the dump budget       |
-| `noDrainRetry`             | zero the drain budget      |
-| `unlimitedInitializeRetry` | open the initialize budget |
-| `unlimitedDumpRetry`       | open the dump budget       |
-| `unlimitedDrainRetry`      | open the drain budget      |
-| `noRetry`                  | zero all three             |
-| `unlimitedRetry`           | open all three             |
+| Preset                                | Effect                              |
+| ------------------------------------- | ----------------------------------- |
+| `noInitializeRetry`                   | zero the copy's initialize budget   |
+| `noTransferrerInitializeRetry`        | zero the medium's initialize budget |
+| `noDumpRetry`                         | zero the dump budget                |
+| `noDrainRetry`                        | zero the drain budget               |
+| `unlimitedInitializeRetry`            | open the copy's initialize budget   |
+| `unlimitedTransferrerInitializeRetry` | open the medium's initialize budget |
+| `unlimitedDumpRetry`                  | open the dump budget                |
+| `unlimitedDrainRetry`                 | open the drain budget               |
+| `noRetry`                             | zero all four                       |
+| `unlimitedRetry`                      | open all four                       |
 
 ```js
-Fugue.Options.Asset.noRetry(distributor); // fail fast, report once
+Fugue.Options.Preset.noRetry(distributor); // fail fast, report once
 ```
 
 ### `distributor.options`
@@ -456,12 +470,13 @@ object a copy's `read()` rejects with, unwrapped.
 
 From the write side:
 
-| Code                       | Fired by | Payload                 |
-| -------------------------- | -------- | ----------------------- |
-| `transferrer-dump-failed`  | `DUMP`   | `{ retry, cause }`      |
-| `transferrer-write-failed` | `WRITE`  | `{ retry, cause }`      |
-| `transferrer-backlog`      | `WRITE`  | `{ pendingByteLength }` |
-| `transferrer-drop-failed`  | `DROP`   | `{ cause }`             |
+| Code                            | Fired by     | Payload                 |
+| ------------------------------- | ------------ | ----------------------- |
+| `transferrer-initialize-failed` | `INITIALIZE` | `{ retry, cause }`      |
+| `transferrer-dump-failed`       | `DUMP`       | `{ retry, cause }`      |
+| `transferrer-write-failed`      | `WRITE`      | `{ retry, cause }`      |
+| `transferrer-backlog`           | `WRITE`      | `{ pendingByteLength }` |
+| `transferrer-drop-failed`       | `DROP`       | `{ cause }`             |
 
 From the read side:
 
@@ -500,9 +515,9 @@ member and retry there.
 
 ### Transferrer
 
-Abstract. The write side: take the stash, write one chunk, let the
-medium go. Its getters are the framework's own bookkeeping; the members
-are your business.
+Abstract. The write side: get the medium ready, take the stash, write one
+chunk, let the medium go. Its getters are the framework's own bookkeeping;
+the members are your business.
 
 #### `static [Fugue.SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args)`
 
@@ -510,24 +525,39 @@ Reads what the host passed to `setTransferrerArgs()`, before the
 transferrer is built. The default returns `args` unchanged. An exception
 thrown here reaches the host as it is.
 
+#### `[Fugue.SYMBOL.TRANSFERRER._I.INITIALIZE]()`
+
+Get the medium ready — open the file, create the store, whatever "there is
+a place to write" means to you. It runs once, before the first `DUMP`, and
+never again. The default does nothing, so a medium with no ready step can
+leave it out.
+
+A rejection is retried per `MaxTransferrerInitializeRetryCount` /
+`TransferrerInitializeRetryInterval`, and each attempt is reported as
+`transferrer-initialize-failed`. When the budget runs out the failure is
+latched the way a dump failure is, and **no dump is attempted**: nothing was
+written, so the tail is simply cut.
+
 #### `[Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash)`
 
-Hand the whole stash to the medium. `stash.done` tells you whether the
-source reached its end, `stash.length` and `stash.byteLength` what is
-worth writing, `stash.get(i)` and `stash.chunks()` how to reach the
-bytes. `chunks()` is a copy: an iteration never sees a later push.
+Hand the whole stash to the medium, with the medium already ready.
+`stash.done` tells you whether the source reached its end, `stash.length`
+and `stash.byteLength` what is worth writing, `stash.get(i)` and
+`stash.chunks()` how to reach the bytes. `chunks()` is a copy: an
+iteration never sees a later push.
 
-A rejection is retried per `MaxDumpRetryCount` / `DumpRetryInterval`, and
-each attempt is reported. When the budget runs out, the failure is
-latched: the queued prefix is still served to the copies, but every later
-write and every position wait throws that same error — a tail cut, not a
-whole-stream failure.
+A rejection is retried per `MaxTransferrerDumpRetryCount` /
+`TransferrerDumpRetryInterval`, and each attempt is reported. When the
+budget runs out, the failure is latched: the queued prefix is still served
+to the copies, but every later write and every position wait throws that
+same error — a tail cut, not a whole-stream failure.
 
 #### `[Fugue.SYMBOL.TRANSFERRER._I.WRITE](chunk)`
 
 Take one chunk. A rejection defers the chunk — it is not lost — and is
-retried per `MaxDrainRetryCount` / `DrainRetryInterval`. When the budget
-runs out, the error is latched as above.
+retried per `MaxTransferrerDrainRetryCount` /
+`TransferrerDrainRetryInterval`. When the budget runs out, the error is
+latched as above.
 
 #### `[Fugue.SYMBOL.TRANSFERRER._I.DROP]()`
 
@@ -536,12 +566,16 @@ swallowed: the teardown face is fail-soft.
 
 #### Getters
 
-| Getter              | Meaning                       |
-| ------------------- | ----------------------------- |
-| `dumping`           | the dump in flight, or `null` |
-| `done`              | the source ended              |
-| `dropped`           | the transferrer was released  |
-| `pendingByteLength` | queued bytes not yet written  |
+| Getter              | Meaning                          |
+| ------------------- | -------------------------------- |
+| `prepared`          | the prepare in flight, or `null` |
+| `done`              | the source ended                 |
+| `dropped`           | the transferrer was released     |
+| `pendingByteLength` | queued bytes not yet written     |
+
+Awaiting `prepared` lands the ready step and the dump together. It
+fulfilling does not mean the medium is ready: a failed attempt is latched
+and surfaces on the next write or position wait.
 
 ### DegradedChunkReader
 
@@ -554,8 +588,9 @@ Required. The transferrer class this reader family writes through.
 #### `[Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]()`
 
 Open the medium. Only open: no positioning, no reading — that is the
-framework's business. A rejection is retried per `MaxInitializeRetryCount`
-/ `InitializeRetryInterval`, and each attempt is reported.
+framework's business. A rejection is retried per
+`MaxChunkReaderInitializeRetryCount` /
+`ChunkReaderInitializeRetryInterval`, and each attempt is reported.
 
 Once the budget runs out, the copy is not killed: the failure surfaces
 only when a read actually needs the medium. Until then the copy keeps
@@ -609,7 +644,7 @@ Every slot above is exported under `Fugue.SYMBOL`, frozen and shared by all
 three classes:
 
 ```js
-Fugue.SYMBOL.TRANSFERRER._I; // DUMP, WRITE, DROP
+Fugue.SYMBOL.TRANSFERRER._I; // INITIALIZE, DUMP, WRITE, DROP
 Fugue.SYMBOL.TRANSFERRER._S; // PARSE_ARGUMENTS
 Fugue.SYMBOL.DEGRADED_CHUNK_READER._I; // READ, INITIALIZE, CLOSE, SEEK
 Fugue.SYMBOL.DEGRADED_CHUNK_READER._S; // TRANSFERRER_CTOR

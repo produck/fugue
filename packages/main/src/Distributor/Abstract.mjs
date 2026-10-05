@@ -109,7 +109,7 @@ class ReadableStreamDistributor extends EventTarget {
       transferrer[TRANSFERRER.$I.SET_DONE]();
     }
 
-    transferrer[TRANSFERRER.$I.DUMP](stash);
+    transferrer[TRANSFERRER.$I.PREPARE](stash);
     this[$I.TRANSFERRER] = transferrer;
     this[A.I.CTOR.READER.CURRENT] = DegradedChunkReaderImpl;
 

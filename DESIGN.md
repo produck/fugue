@@ -29,7 +29,7 @@
 `ReadableStreamDistributor` 是**抽象类**——不能直接 `new`，下游须继承；
 默认实现可按需覆盖。
 
-- 内存→介质阈值：选项 `MaxStashByteLength`（默认 `1GiB`），读经
+- 内存→介质阈值：选项 `MaxChunkStashByteLength`（默认 `1GiB`），读经
   `Options.Get`、写经 `Options.Tune`（构造器只收 `source`）
 - `get degraded` → 观察 `$I.TRANSFERRER`（相位只有一个事实来源）
 - `[_S.DEGRADED_CHUNK_READER_CTOR]` → 策略侧给出的降级读取器类，degrade
@@ -52,8 +52,8 @@ import { ReadableStreamDistributor } from '@produck/fugue';
 class MyDistributor extends ReadableStreamDistributor {}
 const distributor = new MyDistributor(source);
 
-// 注意：阈值经 `Options.Tune.MaxStashByteLength` 设定（默认 `1GiB`），
-// 一旦溢出到磁盘后 `MaxStashByteLength` 不再被查询（单向门）
+// 注意：阈值经 `Options.Tune.MaxChunkStashByteLength` 设定（默认 `1GiB`），
+// 一旦溢出到磁盘后 `MaxChunkStashByteLength` 不再被查询（单向门）
 
 const copy = distributor.fork();
 // → ForkedReadableStream（ReadableStream 子类）；无 unregister
@@ -111,19 +111,19 @@ graph TD
 
 ### 模块
 
-| 模块                           | 职责                                                                                                                                                                |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ReadableStreamDistributor`    | 抽象类——多拷贝分发，引用计数，策略切换。阈值是构造参数（默认 `1GiB`），落受保护字段                                                                                 |
-| `AbstractPart`                 | 分发器下元件的基类——受保护 `$I.DISTRIBUTOR` 持分发器、`$I.WARN` 转发到真出口（四个家族继承它）                                                                      |
-| `AbstractChunkReader`          | 拷贝侧读取抽象——经 `Part` 持分发器（`agent` / `stash` 按需取）；进度与前沿驱动（`$I.ENSURE_THEN_READ` → `$I.READ` → `_I.READ`）                                     |
-| `BufferChunkReader`            | 内存阶段——直接消费共享 `ChunkStash`，按 index 读取                                                                                                                  |
-| `AbstractDegradedChunkReader`  | 降级家族抽象——纯读；初始化屏障与 `close`；写侧类由 `_S.TRANSFERRER_CTOR`（家族）声明，实例由分发器降级时构造并交接                                                  |
-| `AbstractTransferrer`          | 写侧内部抽象——介质中性的受保护 `$I.DUMP` / `$I.WRITE` / `$I.SET_DONE` / `$I.DROP` + 元件的 `$I.SET_DISTRIBUTOR`（构造后挂上自己，失败就地报），读侧位置门与队列计数 |
-| `ChunkStash`                   | 共享内存缓冲容器——聚合 chunk，写面为受保护生命周期（push/setDone/drop），读侧公开                                                                                   |
-| `ForkedReadableStream`         | 拷贝流（内部类）——`ReadableStream` 子类；`pull` 驱动自己的 ChunkReader                                                                                              |
-| `SourceReader`                 | 分发器侧拉取装置——包住单流 source reader 的设备角色（读一块、闩终态、源侧失败在此派发），不含调度                                                                   |
-| `SourceConsumptionAgent`       | 源流消费代理（内部类）——统筹调度（拉不拉、并发合并 single-flight、背压）与落点；按目标判定要不要碰源、拉一块、再按相位落点；与分发器 1:1，全 fork 共享              |
-| `ForkedReadableStreamRegistry` | fork 活体注册表（内部协作类）——`add(fork)` 入册、可遍历供降级换读器、fork 出口 `prune(fork)` 出表（成员资格 = 降级交接名单，无扫描清理）                            |
+| 模块                           | 职责                                                                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ReadableStreamDistributor`    | 抽象类——多拷贝分发，引用计数，策略切换。阈值是构造参数（默认 `1GiB`），落受保护字段                                                                                    |
+| `AbstractPart`                 | 分发器下元件的基类——受保护 `$I.DISTRIBUTOR` 持分发器、`$I.WARN` 转发到真出口（四个家族继承它）                                                                         |
+| `AbstractChunkReader`          | 拷贝侧读取抽象——经 `Part` 持分发器（`agent` / `stash` 按需取）；进度与前沿驱动（`$I.ENSURE_THEN_READ` → `$I.READ` → `_I.READ`）                                        |
+| `BufferChunkReader`            | 内存阶段——直接消费共享 `ChunkStash`，按 index 读取                                                                                                                     |
+| `AbstractDegradedChunkReader`  | 降级家族抽象——纯读；初始化屏障与 `close`；写侧类由 `_S.TRANSFERRER_CTOR`（家族）声明，实例由分发器降级时构造并交接                                                     |
+| `AbstractTransferrer`          | 写侧内部抽象——介质中性的受保护 `$I.PREPARE` / `$I.WRITE` / `$I.SET_DONE` / `$I.DROP` + 元件的 `$I.SET_DISTRIBUTOR`（构造后挂上自己，失败就地报），读侧位置门与队列计数 |
+| `ChunkStash`                   | 共享内存缓冲容器——聚合 chunk，写面为受保护生命周期（push/setDone/drop），读侧公开                                                                                      |
+| `ForkedReadableStream`         | 拷贝流（内部类）——`ReadableStream` 子类；`pull` 驱动自己的 ChunkReader                                                                                                 |
+| `SourceReader`                 | 分发器侧拉取装置——包住单流 source reader 的设备角色（读一块、闩终态、源侧失败在此派发），不含调度                                                                      |
+| `SourceConsumptionAgent`       | 源流消费代理（内部类）——统筹调度（拉不拉、并发合并 single-flight、背压）与落点；按目标判定要不要碰源、拉一块、再按相位落点；与分发器 1:1，全 fork 共享                 |
+| `ForkedReadableStreamRegistry` | fork 活体注册表（内部协作类）——`add(fork)` 入册、可遍历供降级换读器、fork 出口 `prune(fork)` 出表（成员资格 = 降级交接名单，无扫描清理）                               |
 
 ### 类图
 
@@ -199,7 +199,7 @@ classDiagram
 
     class AbstractTransferrer {
         <<abstract>>
-        +dumping
+        +prepared
         +dropped
     }
 
@@ -290,8 +290,10 @@ Distributor/
     _External.mjs
   DegradedChunkReader/  # 降级家族：AbstractDegradedChunkReader（纯读抽象，与 ChunkReader/ 平行）
     Abstract.mjs
+    Options.mjs         # 选项短名（模块内）
     Transferrer/        # AbstractTransferrer（家族内部抽象：写侧 dump/write）
       Abstract.mjs
+      Options.mjs       # 选项短名（模块内）
       index.mjs
       _Symbol.mjs
       _External.mjs
@@ -438,13 +440,23 @@ graph BT
     块列表（同一批对象，只加引用），活块续在队尾——一条 FIFO
     （`I.DRAIN` 单飞）就是全部；外部（分发器与读器）既不 `await` dump，
     也不判断换读器时机。
-  - `$I.DUMP(chunkStash)` — 交出整个 `ChunkStash`，**同步
+  - `$I.PREPARE(chunkStash)` — 交出整个 `ChunkStash`，**同步
     返回**：先接管 stash 的整份块列表（此刻队列必空），再把那一趟记进
-    `I.DUMPING` 并返回，本体在 `I.DUMP` 里——同一步里就调抽象
-    `_I.DUMP` 开工，成功即 `DROP` 载体、清掉接管的这 L 条（已落盘）并把
-    水位一次推满；失败只闩 `I.DUMPING_ERROR` 并结算门（保留现场不 DROP；接管的
+    `I.PREPARING` 并返回，本体在 `I.PREPARE` 里——**prepare 阶段 = 就绪 +
+    交付**：同一步里先跑就绪段（见下），再调抽象 `_I.DUMP` 开工，成功即
+    `DROP` 载体、
+    清掉接管的这 L 条（已落盘）并把水位一次推满；失败只闩
+    `I.PREPARING_ERROR` 并结算门（保留现场不 DROP；接管的
     这批仍在队列里，各拷贝按自己位置读到底，只有永不会有块的位被拒），
     返回的 Promise 以转义错误拒（`transferrer-dump-failed` 已在发生处派出）。
+  - **写侧就绪是一等成员**（2026-10-05）：`_I.INITIALIZE()` 由基类默认空
+    实现，介质要 open / 建 store 就重载它。它是一个**独立阶段**：`$I.PREPARE`
+    接管块列表后先跑 `I.INITIALIZE`（自己的预算
+    `MaxTransferrerInitializeRetryCount` /
+    `TransferrerInitializeRetryInterval`、自己的报文
+    `transferrer-initialize-failed`），成功才进 `I.DUMP`——
+    两段串行，预算不叠乘；用尽则闩 `I.PREPARING_ERROR`，dump 一次都不跑
+    （介质上确实什么都没写）。
   - `$I.WRITE(buffer)` — 活数据**入队即返回**（不碰介质）：追加待写
     队列并确保 drain 在途；队列无上限，积压处置归下游。
   - `$I.SET_DONE()` — 源已尽在降级相位的落点：agent 在 done 那趟拉取
@@ -453,7 +465,7 @@ graph BT
     或在队列里；到头也算。介质失败只否决未被接受的位，已被接受的位
     照发）与 `$I.PEEK(position)`（取队列里那一块，
     越界/已落介质则 `undefined`）。实例是纯内部对象：不开公开观察面
-    （调试看符号表），家族只经 `get dumping` 与 `$I` 原语交互。
+    （调试看符号表），家族只经 `get prepared` 与 `$I` 原语交互。
   - 状态就是实例字段——1:1 之下无需再按 stash 键控。
 - `FileChunkReader` 是 `AbstractDegradedChunkReader` 的 Node 文件系统读
   实现，配套其 `FileTransferrer` 提供写侧；两者实现于兄弟包
@@ -490,7 +502,7 @@ sequenceDiagram
     DIST->>B: 回放 chunks 3-10 → 无缝切换到 chunk 11..
 ```
 
-**边界策略是一个选项**（`DegradeOnStashFullAndDone`）：阈值判据
+**边界策略是一个选项**（`DegradeOnChunkStashFullAndDone`）：阈值判据
 （`degradeIfNeeded()`）在 `pull()` 里跑、**对 `done` 那一趟也跑**，
 “达到上限且源已到头”时切不切由该选项决定——**默认不切**（数据全集已在
 stash 里且不会再涨，落介质只是白搬一趟），取“切”时切换的执行必须自己把
@@ -592,7 +604,7 @@ sequenceDiagram
 预设。
 
 背压点：降级后不再有"等 dump 完成"这一档。`$I.WRITE` 入队即返回、
-`$I.DUMP` 同步返回，pull 的落点不再阻塞；落点从"内存 stash"变为
+`$I.PREPARE` 同步返回，pull 的落点不再阻塞；落点从"内存 stash"变为
 "transferrer 的 FIFO 管道"（唯一写入者 = 单飞 drain）。于是背压量纲
 变成**队列占用**——抽象层不设上限、不做闸门，也不外露观察面
 （调试看符号），积压怎么处置是下游的实现问题。
@@ -673,9 +685,9 @@ sequenceDiagram
 `destroy()` 的那种没开过，什么都不删，宿主已存在的文件不受影响。
 删除带重试（`force` + `maxRetries` / `retryDelay`，盖住 Windows 的
 `EPERM` / `EBUSY`）：放开的当场，各拷贝的读句柄可能还没关完。
-在途的 dump 由宿主自查 `get dropped` 收尾（`_I.DUMP` 开完句柄发现已被放开就
-关掉并退出，不落字节），那条路走同一个"关并删"，所以"释放先到、dump 后到"
-既不留半截数据也不留空文件。读器只关自己的读句柄（`_I.CLOSE`）。
+在途的 dump 由宿主自查 `get dropped` 收尾（`_I.INITIALIZE` 开完句柄发现已被
+放开就关掉并退出，不落字节），那条路走同一个"关并删"，所以"释放先到、
+dump 后到"既不留半截数据也不留空文件。读器只关自己的读句柄（`_I.CLOSE`）。
 代价：`destroy()` 常发生在失败收场（介质写失败、源报错），那时文件同样被删，
 现场不再保留；要留档的宿主须在 `destroy()` 之前自己复制。临时文件版
 （`degraded/temporary-file`）自己取名，清理沿用这一条，不再另立策略。
@@ -693,8 +705,8 @@ sequenceDiagram
   文件描述符无法回收、磁盘文件无法删除
 
 模块通过事件机制提供感知能力。**已实现的是积压**：降级相里“切换之后新堆
-上去、还没落盘的字节数”超过阈值（选项 `MaxBacklogWarningByteLength`，
-默认跟随 `MaxStashByteLength`）就派一次
+上去、还没落盘的字节数”超过阈值（选项 `MaxTransferrerBacklogWarningByteLength`，
+默认跟随 `MaxChunkStashByteLength`）就派一次
 `warn('transferrer-backlog', { pendingByteLength })`——**不去抖**：只要还在阈值
 以上，每写一笔就派一次（水准信号，限频归宿主）。积压只观察、不闸门，
 也不反压源。
@@ -734,7 +746,7 @@ sequenceDiagram
 - 终止原因：`$I.TERMINATION`（未终结为 `null`，否则是那个 `AbortError`，
   拷贝流的 `error` 就是它）。
 - 当前活跃 fork 集合：`$I.FORKED_READABLE_STREAM_REGISTRY`（内部 `size`）。
-- 写侧水位：`pendingByteLength` / `dumping` / `done` / `dropped`。
+- 写侧水位：`pendingByteLength` / `prepared` / `done` / `dropped`。
 - 落盘 / 存储侧水位：降级 reader 与存储策略自管，分发器不感知。
 
 ### 生命周期事件

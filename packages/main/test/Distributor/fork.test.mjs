@@ -46,7 +46,7 @@ describe('.fork()', () => {
     const distributor = new TestDistributor(makeSource(['a']));
     const first = distributor.fork().getReader();
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
 
     await first.read();
     assert.equal(distributor.degraded, true);
@@ -84,8 +84,8 @@ describe('.fork()', () => {
 
     distributor.addEventListener('warn', (event) => warns.push(event.detail));
 
-    Fugue.Options.Tune.MaxStashByteLength(distributor, 0);
-    Fugue.Options.Asset.noRetry(distributor);
+    Fugue.Options.Tune.MaxChunkStashByteLength(distributor, 0);
+    Fugue.Options.Preset.noRetry(distributor);
 
     await assert.rejects(distributor.fork().getReader().read(), cause);
     await settle();

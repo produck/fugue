@@ -13,6 +13,7 @@ export const CODES = deepFreeze({
   },
   TRANSFERRER: {
     BACKLOG: 'transferrer-backlog',
+    INITIALIZE_FAILED: 'transferrer-initialize-failed',
     DUMP_FAILED: 'transferrer-dump-failed',
     DROP_FAILED: 'transferrer-drop-failed',
     WRITE_FAILED: 'transferrer-write-failed',
