@@ -390,7 +390,7 @@
   `MaxTransferrerDumpRetryCount` / `MaxTransferrerDrainRetryCount` 默认都是
   `Infinity`（无限重试），断言走 `NonNegativeIntegerOrInfinity`
   （`Infinity` 是唯一非整数合法值）；四个 `*RetryInterval` 是两次尝试之间
-  的毫秒数，断言 `NonNegativeInteger`，默认 `1 * SECOND`（个数默认无限，
+  的毫秒数，断言 `NonNegativeInteger`，默认 `Unit.Time.SEC`（个数默认无限，
   间隔就不能默认 0——否则死盘上是自旋）。四个重试循环都已落位，读取时机
   写在 `Items.mjs` 每项的头一行注释里。
 

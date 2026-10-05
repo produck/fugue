@@ -1,12 +1,12 @@
-import * as Assert from './Assert.mjs';
+import { Unit } from '@produck/argot';
 
-const SECOND = 1000;
+import * as Assert from './Assert.mjs';
 
 const items = [
   {
     // Read on every pull, by the degrade probe (degradeIfNeeded()).
     name: 'MaxChunkStashByteLength',
-    defaultValue: (1 << 10) ** 3,
+    defaultValue: Unit.Byte.GB,
     assert: Assert.NonNegativeInteger,
   },
   {
@@ -36,7 +36,7 @@ const items = [
   {
     // Read once at the start of every reader initialize, with the count.
     name: 'ChunkReaderInitializeRetryInterval',
-    defaultValue: 1 * SECOND,
+    defaultValue: Unit.Time.SEC,
     assert: Assert.NonNegativeInteger,
   },
   {
@@ -48,7 +48,7 @@ const items = [
   {
     // Read once at the start of every transferrer initialize, with the count.
     name: 'TransferrerInitializeRetryInterval',
-    defaultValue: 1 * SECOND,
+    defaultValue: Unit.Time.SEC,
     assert: Assert.NonNegativeInteger,
   },
   {
@@ -60,7 +60,7 @@ const items = [
   {
     // Read once at the start of every dump, with the retry count.
     name: 'TransferrerDumpRetryInterval',
-    defaultValue: 1 * SECOND,
+    defaultValue: Unit.Time.SEC,
     assert: Assert.NonNegativeInteger,
   },
   {
@@ -72,7 +72,7 @@ const items = [
   {
     // Read once per drained chunk, with the retry count.
     name: 'TransferrerDrainRetryInterval',
-    defaultValue: 1 * SECOND,
+    defaultValue: Unit.Time.SEC,
     assert: Assert.NonNegativeInteger,
   },
 ];

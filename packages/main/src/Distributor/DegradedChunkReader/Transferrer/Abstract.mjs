@@ -185,7 +185,7 @@ class AbstractTransferrer extends Part.Abstract {
 
   async [I.DRAIN]() {
     if (this[I.PREPARING] !== null) {
-      await Promise.allSettled([this[I.PREPARING]]);
+      await Common.ignoreRejection(this[I.PREPARING]);
     }
 
     if (this[I.PREPARING_ERROR] !== null) {
