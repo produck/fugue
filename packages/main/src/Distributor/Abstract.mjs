@@ -1,6 +1,4 @@
-import * as Ow from '@produck/ow';
-import { ThrowTypeError } from '@produck/type-error';
-import { Common, SYMBOL } from '@produck/argot';
+import { Common, Ow, SYMBOL, ThrowTypeError } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import * as BufferChunkReader from './BufferChunkReader/index.mjs';

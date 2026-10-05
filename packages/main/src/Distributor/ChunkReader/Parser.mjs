@@ -1,4 +1,4 @@
-import { ThrowTypeError } from '@produck/type-error';
+import { ThrowTypeError } from '@produck/argot';
 
 export function ReadableStreamResult(value) {
   if (typeof value !== 'object' || value === null) {

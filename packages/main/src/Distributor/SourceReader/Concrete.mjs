@@ -1,4 +1,4 @@
-import * as Ow from '@produck/ow';
+import { Ow } from '@produck/argot';
 
 import { I } from './_Symbol.mjs';
 import { PART } from './_External.mjs';

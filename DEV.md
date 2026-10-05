@@ -1130,6 +1130,15 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
 - **仍然成立的边界**：宿主自实现的 `_I.DUMP` 每次重试都拿到整份 stash，
   所以它必须**可重来**（`node-file` 从头覆写）。
 
+**依赖只声明 argot（argot 0.3.0）**（同日）：
+
+- argot 0.3 起依赖并**转发** `@produck/ow`（`Ow` 命名空间）与
+  `@produck/type-error`（扁平转发：`ThrowTypeError` / `ErrorMessage`）。
+  于是用到它们的地方一律改成从 argot 取，**三个包的 `package.json` 里
+  不再单独声明这两个**（`packages/main` 删两条，两个 degraded 包把
+  `type-error` 换成 argot）。
+- `Unit` 仍是 0.2 带来、0.3 未变的表（见上条）。
+
 **撤回：降级探针那项不改“每趟 pull 都读”**（同日）：
 
 - 上面那条动机是条件块折行；`SourceConsumptionAgent` 改用

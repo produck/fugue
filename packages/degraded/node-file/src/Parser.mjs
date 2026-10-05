@@ -1,6 +1,6 @@
 import { isAbsolute } from 'node:path';
 
-import { ThrowTypeError } from '@produck/type-error';
+import { ThrowTypeError } from '@produck/argot';
 
 export const absolutePathname = (value, role) => {
   if (typeof value !== 'string') {

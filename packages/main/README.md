@@ -169,7 +169,7 @@ On Node, writing a medium of your own is optional:
 `@produck/fugue-degraded-node-file` is that medium
 for the file system — framed records in a file the host names, read back
 by position, on bare `node:fs`, with no dependency beyond this framework
-and `@produck/type-error`.
+and `@produck/argot`.
 
 ```sh
 npm install @produck/fugue-degraded-node-file

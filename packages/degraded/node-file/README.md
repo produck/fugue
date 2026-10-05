@@ -5,8 +5,8 @@
 
 The distributor spills to a medium once its stash grows past
 `MaxChunkStashByteLength`. This package is that medium for Node: framed records
-in the file the host names, bare `node:fs` underneath, and
-`@produck/type-error` for the arguments it refuses.
+in the file the host names, bare `node:fs` underneath, and `@produck/argot`
+for the arguments it refuses.
 
 ## Install
 

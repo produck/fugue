@@ -1,5 +1,4 @@
-import * as Ow from '@produck/ow';
-import { ErrorMessage, ThrowTypeError } from '@produck/type-error';
+import { ErrorMessage, Ow, ThrowTypeError } from '@produck/argot';
 
 export function NonNegativeInteger(value) {
   if (!Number.isInteger(value) || value < 0) {

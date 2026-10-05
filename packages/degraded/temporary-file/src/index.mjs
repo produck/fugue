@@ -3,7 +3,7 @@ import * as path from 'node:path';
 
 import * as Fugue from '@produck/fugue';
 import * as File from '@produck/fugue-degraded-node-file';
-import { ThrowTypeError } from '@produck/type-error';
+import { ThrowTypeError } from '@produck/argot';
 
 const temporaryPathname = (name) => {
   if (typeof name !== 'string') {

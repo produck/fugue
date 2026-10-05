@@ -1,5 +1,4 @@
-import * as Ow from '@produck/ow';
-import { Common } from '@produck/argot';
+import { Common, Ow } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import * as ChunkReader from '../ChunkReader/index.mjs';

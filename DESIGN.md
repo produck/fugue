@@ -641,9 +641,9 @@ sequenceDiagram
 - `Set` / `Map` / `Promise.withResolvers`（语言内建）
 
 平台之外只依赖**组织内共享包**，不引第三方：`@produck/es-abstract`
-（抽象契约）、`@produck/argot`（共享词汇 `Common` / `SYMBOL`）、
-`@produck/type-error`（参数报文）、`@produck/ow`（抛错出口）、
-`@produck/deep-freeze-enumerable`（符号表冻结）。
+（抽象契约）、`@produck/argot`（共享词汇：`Common` / `SYMBOL` / `Unit`，
+并从 0.3 起转发 `@produck/ow` 与 `@produck/type-error`——**只声明 argot
+就够**）、`@produck/deep-freeze-enumerable`（符号表冻结）。
 
 介质实现于兄弟包，不进平台中立的基类：`@produck/fugue-degraded-node-file`
 （`node:fs` 打开 / 读写 / 删除）与建在它之上的
