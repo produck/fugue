@@ -240,8 +240,9 @@ Answers a `ReadableStream` with its own position. Bytes already consumed
 by other copies are still delivered to it — a fork always sees the whole
 source.
 
-- The high water mark comes from `ForkHighWaterMark`, read once for this
-  fork, so live copies keep the value they were forked with.
+- The high water mark comes from
+  `ForkedReadableStreamHighWaterMark`, read once for this fork, so live
+  copies keep the value they were forked with.
 - Before the degrade, the copy reads the stash; after it, the framework
   switches the copy to a degraded reader seeded with its position.
 - Forking after a degrade gives a degraded copy from birth.
@@ -339,7 +340,7 @@ behaviour while it runs.
 | `MaxChunkStashByteLength`                | 1 GiB      |
 | `MaxTransferrerBacklogWarningByteLength` | as above   |
 | `DegradeOnChunkStashFullAndDone`         | `false`    |
-| `ForkHighWaterMark`                      | `1`        |
+| `ForkedReadableStreamHighWaterMark`      | `1`        |
 | `MaxChunkReaderInitializeRetryCount`     | `Infinity` |
 | `ChunkReaderInitializeRetryInterval`     | `1000` ms  |
 | `MaxTransferrerInitializeRetryCount`     | `Infinity` |
@@ -358,8 +359,9 @@ What they mean:
 - `DegradeOnChunkStashFullAndDone` — whether a stash that is both over the
   limit and complete still degrades. Left `false`, a source that ends
   under the limit stays in memory. Read on every pull.
-- `ForkHighWaterMark` — the high water mark of every copy forked from now
-  on. A live copy keeps the value it was forked with. Read once per fork.
+- `ForkedReadableStreamHighWaterMark` — the high water mark of every copy
+  forked from now on. A live copy keeps the value it was forked with. Read
+  once per fork.
 - `MaxChunkReaderInitializeRetryCount` and
   `ChunkReaderInitializeRetryInterval` — the budget and the pause of one
   copy's `INITIALIZE`. Read once per initialize.
@@ -414,14 +416,14 @@ Presets over the four retry budgets.
 
 | Preset                                | Effect                              |
 | ------------------------------------- | ----------------------------------- |
-| `noInitializeRetry`                   | zero the copy's initialize budget   |
+| `noChunkReaderInitializeRetry`        | zero the copy's initialize budget   |
 | `noTransferrerInitializeRetry`        | zero the medium's initialize budget |
-| `noDumpRetry`                         | zero the dump budget                |
-| `noDrainRetry`                        | zero the drain budget               |
-| `unlimitedInitializeRetry`            | open the copy's initialize budget   |
+| `noTransferrerDumpRetry`              | zero the dump budget                |
+| `noTransferrerDrainRetry`             | zero the drain budget               |
+| `unlimitedChunkReaderInitializeRetry` | open the copy's initialize budget   |
 | `unlimitedTransferrerInitializeRetry` | open the medium's initialize budget |
-| `unlimitedDumpRetry`                  | open the dump budget                |
-| `unlimitedDrainRetry`                 | open the drain budget               |
+| `unlimitedTransferrerDumpRetry`       | open the dump budget                |
+| `unlimitedTransferrerDrainRetry`      | open the drain budget               |
 | `noRetry`                             | zero all four                       |
 | `unlimitedRetry`                      | open all four                       |
 

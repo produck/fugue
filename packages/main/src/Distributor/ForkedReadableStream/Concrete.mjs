@@ -1,13 +1,13 @@
 import * as Ow from '@produck/ow';
 
-import * as Options from '../Options/index.mjs';
+import * as Options from './Options.mjs';
 import { $I, A } from './_Symbol.mjs';
 import { DISTRIBUTOR, _A } from './_External.mjs';
 
 export default class ForkedReadableStream extends ReadableStream {
   constructor(distributor, bufferReader) {
     const registry = distributor[DISTRIBUTOR.A.$I.REGISTRY];
-    const highWaterMark = Options.Get.ForkHighWaterMark(distributor);
+    const highWaterMark = Options.getHighWaterMark(distributor);
     let _controller;
 
     const conclude = () => {

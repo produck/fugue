@@ -12,7 +12,7 @@ describe('.options', () => {
     const items = [
       'ChunkReaderInitializeRetryInterval',
       'DegradeOnChunkStashFullAndDone',
-      'ForkHighWaterMark',
+      'ForkedReadableStreamHighWaterMark',
       'MaxChunkReaderInitializeRetryCount',
       'MaxChunkStashByteLength',
       'MaxTransferrerBacklogWarningByteLength',

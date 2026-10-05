@@ -344,7 +344,7 @@ type OptionDefinitions = {
    * The high water mark of every copy forked from now on. Read once per fork,
    * so a live copy keeps the value it was made with. Defaults to 1.
    */
-  ForkHighWaterMark: number;
+  ForkedReadableStreamHighWaterMark: number;
 
   /**
    * How many times an open that rejects is retried. Read once per reader
@@ -428,14 +428,14 @@ export declare namespace Options {
    * opens it, and `noRetry` / `unlimitedRetry` do all four at once.
    */
   type PresetName =
-    | 'noInitializeRetry'
+    | 'noChunkReaderInitializeRetry'
     | 'noTransferrerInitializeRetry'
-    | 'noDumpRetry'
-    | 'noDrainRetry'
-    | 'unlimitedInitializeRetry'
+    | 'noTransferrerDumpRetry'
+    | 'noTransferrerDrainRetry'
+    | 'unlimitedChunkReaderInitializeRetry'
     | 'unlimitedTransferrerInitializeRetry'
-    | 'unlimitedDumpRetry'
-    | 'unlimitedDrainRetry'
+    | 'unlimitedTransferrerDumpRetry'
+    | 'unlimitedTransferrerDrainRetry'
     | 'noRetry'
     | 'unlimitedRetry';
 

@@ -23,7 +23,7 @@ const items = [
   },
   {
     // Read once per fork, at construction; older copies keep their value.
-    name: 'ForkHighWaterMark',
+    name: 'ForkedReadableStreamHighWaterMark',
     defaultValue: 1,
     assert: Assert.HighWaterMark,
   },

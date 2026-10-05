@@ -1,6 +1,6 @@
 import { Tune } from './Accessor.mjs';
 
-export function noInitializeRetry(distributor) {
+export function noChunkReaderInitializeRetry(distributor) {
   Tune.MaxChunkReaderInitializeRetryCount(distributor, 0);
 }
 
@@ -8,15 +8,15 @@ export function noTransferrerInitializeRetry(distributor) {
   Tune.MaxTransferrerInitializeRetryCount(distributor, 0);
 }
 
-export function noDumpRetry(distributor) {
+export function noTransferrerDumpRetry(distributor) {
   Tune.MaxTransferrerDumpRetryCount(distributor, 0);
 }
 
-export function noDrainRetry(distributor) {
+export function noTransferrerDrainRetry(distributor) {
   Tune.MaxTransferrerDrainRetryCount(distributor, 0);
 }
 
-export function unlimitedInitializeRetry(distributor) {
+export function unlimitedChunkReaderInitializeRetry(distributor) {
   Tune.MaxChunkReaderInitializeRetryCount(distributor, Infinity);
 }
 
@@ -24,24 +24,24 @@ export function unlimitedTransferrerInitializeRetry(distributor) {
   Tune.MaxTransferrerInitializeRetryCount(distributor, Infinity);
 }
 
-export function unlimitedDumpRetry(distributor) {
+export function unlimitedTransferrerDumpRetry(distributor) {
   Tune.MaxTransferrerDumpRetryCount(distributor, Infinity);
 }
 
-export function unlimitedDrainRetry(distributor) {
+export function unlimitedTransferrerDrainRetry(distributor) {
   Tune.MaxTransferrerDrainRetryCount(distributor, Infinity);
 }
 
 export function noRetry(distributor) {
-  noInitializeRetry(distributor);
+  noChunkReaderInitializeRetry(distributor);
   noTransferrerInitializeRetry(distributor);
-  noDumpRetry(distributor);
-  noDrainRetry(distributor);
+  noTransferrerDumpRetry(distributor);
+  noTransferrerDrainRetry(distributor);
 }
 
 export function unlimitedRetry(distributor) {
-  unlimitedInitializeRetry(distributor);
+  unlimitedChunkReaderInitializeRetry(distributor);
   unlimitedTransferrerInitializeRetry(distributor);
-  unlimitedDumpRetry(distributor);
-  unlimitedDrainRetry(distributor);
+  unlimitedTransferrerDumpRetry(distributor);
+  unlimitedTransferrerDrainRetry(distributor);
 }

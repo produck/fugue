@@ -334,17 +334,21 @@
 - **定位**：分发器的**唯一配置面**。`constructor(source)` 只收源；要读就
   `Options.Get.*`，要改就 `Options.Tune.*`。
 - **命名**（2026-10-05 收口）：`Items.mjs` 里的键是**最完整、无歧义**的
-  公开名——域前缀（`ChunkStash` / `ChunkReader` / `Transferrer`）+ 阶段 +
-  语义，一项一个名。**消费模块不写长名**：每个模块自带一个 `Options.mjs`
-  把长名收成本地短名（`Transferrer/Options.mjs`、
-  `DegradedChunkReader/Options.mjs`），模块只 import 它——短名在模块内唯一，
-  长名在公开面上唯一。要合并粒度就写成 preset，**不在选项层合并**。
+  公开名——域前缀（`ChunkStash` / `ChunkReader` / `Transferrer` /
+  `ForkedReadableStream`）+ 阶段 + 语义，一项一个名。**消费模块不写长名**：
+  每个模块自带一个 `Options.mjs` 把长名收成本地短名
+  （`Transferrer/Options.mjs`、`DegradedChunkReader/Options.mjs`、
+  `ForkedReadableStream/Options.mjs`），模块只 import 它——短名在模块内唯一，
+  长名在公开面上唯一。要合并粒度就写成 preset，**不在选项层合并**；preset
+  名同样带所有者（`noChunkReaderInitializeRetry`、
+  `noTransferrerDumpRetry` …），只有聚合的 `noRetry` / `unlimitedRetry`
+  不带。
 - **文件**：`Options/index.mjs`（门面：转发 `Accessor`、导出 `Preset`）、
   `Options/Accessor.mjs`（注册表：`OPTIONS` 槽位 + `Tune` / `Get` /
   `install` / `snapshot`）、`Options/Items.mjs`（选项定义表）、
   `Options/Assert.mjs`（断言实现）、`Options/Preset.mjs`（以分配器为参、
   调若干 `Tune` 重新映射语义的函数族：`noRetry` / `unlimitedRetry` /
-  `noDumpRetry` …）。**不在类设计规则体系内**：没有
+  `noTransferrerDumpRetry` …）。**不在类设计规则体系内**：没有
   `_Symbol.mjs` / `_External.mjs`，自带本地槽位符号，也不进
   `Distributor/index.mjs` 的“只导出类”约定。
 - **形状**：每个分发器实例挂一张 **bag**（普通对象，键 = `item.name`，
@@ -371,15 +375,16 @@
   发生在流侧，`Get` 回的是宿主给的原值。
 - **宿主取值器抛异常一律放行（2026-09-25 定）**：这属于研发错误，下游工程师
   必须保证它不抛。所以 `Tune` 的安装期求值、`Get` / `snapshot` /
-  `get options`，以及每个内部读取点（`ForkHighWaterMark` 在 `fork()` 构造
-  处、`degradeIfNeeded` 两项、转移器 `$I.WRITE` 一项）都不加 `try`。
+  `get options`，以及每个内部读取点（
+  `ForkedReadableStreamHighWaterMark` 在 `fork()` 构造处、
+  `degradeIfNeeded` 两项、转移器 `$I.WRITE` 一项）都不加 `try`。
   两处后果要知道：`fork()` 是**什么都没建**就抛（拷贝
   未注册、`fork` 事件不派）；pull 里的读取点抛 = 那趟 pull 失败，异常照旧
   到达读侧（拷贝的 read 拒绝），也不出事件——这是放行，不是拦截。
 - **读取时机逐项不同**，写在 `Items.mjs` 每项的头一行注释里（每趟 pull /
   每笔写 / 每个 fork 构造一次）。这条不是风格：`Tune` 之后"为什么不生效"
-  只能靠它回答（`ForkHighWaterMark` 只管之后新建的拷贝）。刻度出处：
-  `logs/measure-options.mjs` / `logs/measure-options2.mjs`。
+  只能靠它回答（`ForkedReadableStreamHighWaterMark` 只管之后新建的拷贝）。
+  刻度出处：`logs/measure-options.mjs` / `logs/measure-options2.mjs`。
 - **八个重试选项（2026-09-29 收口，2026-10-05 增写侧就绪一对）**：
   `MaxChunkReaderInitializeRetryCount` / `MaxTransferrerInitializeRetryCount` /
   `MaxTransferrerDumpRetryCount` / `MaxTransferrerDrainRetryCount` 默认都是
@@ -844,9 +849,10 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `I.DONE` / `$I.CANCELLED` 两字段随之退役。
 - `start` 钩子只做一件事：把 controller 交给构造器局部变量，供入册用
   ——**不落字段**，controller 的唯一持有者是注册表。
-- **预取深度是一个选项**（`ForkHighWaterMark`，默认 `1`，2026-09-21 落）：
-  构造时读一次，作为 `ReadableStream` 的**第二参数**（排队长策）——不能塞进
-  第一个参数（那是 underlying source，塞进去等于没设；实测踩过这个坑）。
+- **预取深度是一个选项**（`ForkedReadableStreamHighWaterMark`，默认 `1`，
+  2026-09-21 落）：构造时读一次，作为 `ReadableStream` 的**第二参数**（排队
+  长策）——不能塞进第一个参数（那是 underlying source，塞进去等于没设；
+  实测踩过这个坑）。
   刻度已量（`logs/probe-fork-hwm.mjs`）：默认 `1` ⇒ 消费者读一笔时源已被拉 2
   笔（总有一笔躺在流内队列里）；`0` ⇒ 零预取（源进度 1）；`4` ⇒ 队列躺 4 笔
   （源进度 5）；小数按同一算式补拉（`1.5` ⇒ 3）；**`Infinity` 等于把源抽干**
@@ -1145,6 +1151,14 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `DegradedChunkReader/Options.mjs`（读侧就绪一对），把长名收成
   `getMaxInitializeRetryCount(distributor)` 这样的本地名；模块只 import
   它，公开面与文档只认长名。
+- **preset 名跟着对齐**：读侧那对本来没所有者（`noInitializeRetry` /
+  `unlimitedInitializeRetry`），与写侧 `noTransferrerInitializeRetry`
+  不对称，改成 `noChunkReaderInitializeRetry` /
+  `unlimitedChunkReaderInitializeRetry`。
+- **四对全对齐（同日）**：dump / drain 那两对也补上所有者
+  （`noTransferrerDumpRetry` / `noTransferrerDrainRetry`，以及对应的两个
+  unlimited）——preset 名从此一律“所有者 + 阶段 + 语义”，只有聚合的
+  `noRetry` / `unlimitedRetry` 不带所有者，因为它们管的是全部四个。
 - **仍未做**：`ForkHighWaterMark` 的域前缀是 `Fork`，而其它项用的都是类名
   （`ForkedReadableStream` 才是类）；`SourceConsumptionAgent.mjs` 与
   `ForkedReadableStream/Concrete.mjs` 两处仍在直接读公开长名。
@@ -1176,3 +1190,15 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   fulfilled。d.ts 与 README 各写了一句，不把 fulfilled 说成“介质已就绪”。
 - **仍未做**：要让名字名副其实就得让它 reject（变成状态承诺），那会改失败
   归属（读器初始化会提前抛）并动 `EXCEPTIONS.md`。
+
+**`ForkHighWaterMark` → `ForkedReadableStreamHighWaterMark`**（同日，收口）：
+
+- 上面那条“仍未做”落地：域前缀改用**类名**（`ForkedReadableStream`），
+  与 `ChunkStash` / `ChunkReader` / `Transferrer` 一致——旧里 `Fork` 既不是
+  类也不是目录。
+- 新增 `ForkedReadableStream/Options.mjs` 本地门面（`getHighWaterMark`），
+  构造器只 import 它；至此三个消费模块（Transferrer / DegradedChunkReader
+  / ForkedReadableStream）走同一套“公开长名 + 模块内短名”。
+- **仍未做**：`SourceConsumptionAgent.mjs` 那两处仍在直接读公开长名——它是
+  单文件模块，门面只能落在 `Distributor/` 下，而那里已有公开的 `Options/`
+  目录，同名邻居容易混，要做建议叫 `_Options.mjs`。

@@ -144,26 +144,29 @@ describe('Options', () => {
       });
     });
 
-    describe('::ForkHighWaterMark()', () => {
+    describe('::ForkedReadableStreamHighWaterMark()', () => {
       it('should refuse a negative value', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.ForkHighWaterMark(distributor, -1);
+        const attempt = () =>
+          Tune.ForkedReadableStreamHighWaterMark(distributor, -1);
 
         assert.throws(attempt, EXPECTED.NUMBER);
       });
 
       it('should refuse NaN', () => {
         const distributor = makeDistributor();
-        const attempt = () => Tune.ForkHighWaterMark(distributor, NaN);
+        const attempt = () =>
+          Tune.ForkedReadableStreamHighWaterMark(distributor, NaN);
 
         assert.throws(attempt, EXPECTED.NUMBER);
       });
 
       it('should refuse a BigInt and a Symbol', () => {
         const distributor = makeDistributor();
-        const fromBigInt = () => Tune.ForkHighWaterMark(distributor, 10n);
+        const fromBigInt = () =>
+          Tune.ForkedReadableStreamHighWaterMark(distributor, 10n);
         const fromSymbol = () =>
-          Tune.ForkHighWaterMark(distributor, Symbol('hwm'));
+          Tune.ForkedReadableStreamHighWaterMark(distributor, Symbol('hwm'));
 
         assert.throws(fromBigInt, EXPECTED.BIGINT);
         assert.throws(fromSymbol, EXPECTED.SYMBOL);
@@ -172,11 +175,11 @@ describe('Options', () => {
       it('should pass a numeric string and a boolean through', () => {
         const distributor = makeDistributor();
 
-        Tune.ForkHighWaterMark(distributor, '3');
-        assert.equal(Get.ForkHighWaterMark(distributor), '3');
+        Tune.ForkedReadableStreamHighWaterMark(distributor, '3');
+        assert.equal(Get.ForkedReadableStreamHighWaterMark(distributor), '3');
 
-        Tune.ForkHighWaterMark(distributor, true);
-        assert.equal(Get.ForkHighWaterMark(distributor), true);
+        Tune.ForkedReadableStreamHighWaterMark(distributor, true);
+        assert.equal(Get.ForkedReadableStreamHighWaterMark(distributor), true);
       });
     });
     describe('::MaxTransferrerDumpRetryCount()', () => {
@@ -354,14 +357,21 @@ describe('Options', () => {
       });
     });
 
-    describe('::ForkHighWaterMark()', () => {
+    describe('::ForkedReadableStreamHighWaterMark()', () => {
       it('should default to 1', () => {
-        assert.equal(Get.ForkHighWaterMark(makeDistributor()), 1);
+        assert.equal(
+          Get.ForkedReadableStreamHighWaterMark(makeDistributor()),
+          1,
+        );
       });
 
       it('should be read once per fork, at construction', () => {
         const distributor = makeDistributor();
-        const reads = countGetterReads(distributor, Tune.ForkHighWaterMark, 1);
+        const reads = countGetterReads(
+          distributor,
+          Tune.ForkedReadableStreamHighWaterMark,
+          1,
+        );
 
         distributor.fork();
         assert.equal(reads(), 1);
@@ -375,7 +385,7 @@ describe('Options', () => {
         const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
 
-        Tune.ForkHighWaterMark(distributor, 3);
+        Tune.ForkedReadableStreamHighWaterMark(distributor, 3);
 
         const reader = distributor.fork().getReader();
 
@@ -392,7 +402,7 @@ describe('Options', () => {
       it('should leave already forked copies on their value', async () => {
         const distributor = makeDistributor(['a', 'b', 'c', 'd', 'e']);
 
-        Tune.ForkHighWaterMark(distributor, 1);
+        Tune.ForkedReadableStreamHighWaterMark(distributor, 1);
 
         const tune = Tune.MaxChunkStashByteLength;
         const reads = countGetterReads(distributor, tune, LIMIT);
@@ -401,7 +411,7 @@ describe('Options', () => {
         await settle();
         assert.equal(reads(), 1);
 
-        Tune.ForkHighWaterMark(distributor, 5);
+        Tune.ForkedReadableStreamHighWaterMark(distributor, 5);
 
         await reader.read();
         await settle();
@@ -413,9 +423,9 @@ describe('Options', () => {
       it('should be answered raw, without normalisation', () => {
         const distributor = makeDistributor();
 
-        Tune.ForkHighWaterMark(distributor, '3');
+        Tune.ForkedReadableStreamHighWaterMark(distributor, '3');
 
-        assert.equal(Get.ForkHighWaterMark(distributor), '3');
+        assert.equal(Get.ForkedReadableStreamHighWaterMark(distributor), '3');
       });
     });
 
@@ -454,10 +464,10 @@ describe('Options', () => {
     it('should answer the retry counts of one side', () => {
       const distributor = makeDistributor();
 
-      Preset.noInitializeRetry(distributor);
+      Preset.noChunkReaderInitializeRetry(distributor);
       assert.equal(Get.MaxChunkReaderInitializeRetryCount(distributor), 0);
 
-      Preset.unlimitedInitializeRetry(distributor);
+      Preset.unlimitedChunkReaderInitializeRetry(distributor);
       assert.equal(
         Get.MaxChunkReaderInitializeRetryCount(distributor),
         Infinity,
@@ -477,7 +487,7 @@ describe('Options', () => {
         Infinity,
       );
 
-      Preset.noDumpRetry(distributor);
+      Preset.noTransferrerDumpRetry(distributor);
       assert.equal(
         Get.MaxChunkReaderInitializeRetryCount(distributor),
         Infinity,
@@ -485,14 +495,14 @@ describe('Options', () => {
       assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), 0);
       assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), Infinity);
 
-      Preset.unlimitedDumpRetry(distributor);
+      Preset.unlimitedTransferrerDumpRetry(distributor);
       assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
 
-      Preset.noDrainRetry(distributor);
+      Preset.noTransferrerDrainRetry(distributor);
       assert.equal(Get.MaxTransferrerDumpRetryCount(distributor), Infinity);
       assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), 0);
 
-      Preset.unlimitedDrainRetry(distributor);
+      Preset.unlimitedTransferrerDrainRetry(distributor);
       assert.equal(Get.MaxTransferrerDrainRetryCount(distributor), Infinity);
     });
 
