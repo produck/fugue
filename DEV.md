@@ -23,7 +23,7 @@
 替掉本地近义写法：
 
 - `Common.ignoreRejection(promise)` ← 本地那份 `.catch(() => {})`
-  （`Distributor/Abstract.mjs` 的 `initializeReader`：初始化失败由读点收，
+  （`Distributor/_Abstract.mjs` 的 `initializeReader`：初始化失败由读点收，
   这里只吞给自己）。
 - `Common.sleep(ms)` ← 本地两处 `setTimeout` 包装（读器初始化、写侧
   dump / drain 的重试等待）。
@@ -33,7 +33,7 @@
   它叫小写的 `throwFalse` 且立即调用——包写的是 `^0.1.2`，两者别混。
 - `SYMBOL.CONSTRUCTOR` ← 本地的 `I.CTOR`（`.#ctor`）：`_Symbol.mjs` 不再
   声明这个键，且照旧"纯叶子、不引用任何东西"——argot 的 import 落在
-  `Abstract.mjs`。
+  `_Abstract.mjs`。
 
 一处域收紧：`Common.sleep` 断言"非负整数"，本地那份会把小数静默交给
 `setTimeout` 截断。三个 interval 选项本来就是 `NonNegativeInteger`（`Tune`
@@ -45,7 +45,7 @@
 - **三个维度**（总纲）：**原始含义**（`_Symbol.mjs` 里
   `Symbol('.#…')` / `'.$…'` 的定义，唯一事实，引用绕不过它）·
   **便捷形式**（同文件导出的 `A`，纯派生：删掉别名或某个键，语义层不动）·
-  **引用关系**（`_External.mjs` 转发并导出 `_A`，图是 DAG，
+  **引用关系**（`_Borrow.mjs` 转发并导出 `_A`，图是 DAG，
   `_Symbol.mjs` 是叶子）。
 - 一个符号走完全程（以读器位置为例）：定义在 `ChunkReader/_Symbol.mjs`
   的 `Symbol('.$consumedChunkCount')` → 原始 `this[$I.CONSUMED_CHUNK_COUNT]`
@@ -54,7 +54,7 @@
   `_A.READER` 说明“这是谁的”，`.A.$I.…` 说明“它叫什么”）。
 - 别名的**本地性**：键名由各模块自理，同名可为不同物（`ForkedReadableStream`
   的 `A.I.READER` 是字段，`BufferChunkReader` 的 `_A.READER` 是表）。约定
-  “只从自己的 `./_Symbol.mjs` / `./_External.mjs` 取，惯用 `A` / `_A`
+  “只从自己的 `./_Symbol.mjs` / `./_Borrow.mjs` 取，惯用 `A` / `_A`
   两个名字”——于是读一个文件的头部 import，就知道每个别名归谁。
 - 唯一的代价（不会自己守住）：**键名是两份账**——底层键改名时别名键
   不会跟着动，而别名仍能引用到旧符号。所以改名要两边一起改。
@@ -64,7 +64,7 @@
   （`.$consumedChunkCount`）；描述符：实例 `.#*` / `.$*` / `._*`，静态 `S.*`。
 - `index.mjs` **只导出类**（`Concrete` / `Abstract`；降级家族再带
   `Transferrer` 命名空间），**不导出任何符号表**——符号只走
-  `_Symbol.mjs` / `_External.mjs` 这条路径。
+  `_Symbol.mjs` / `_Borrow.mjs` 这条路径。
 - 模块路径即命名空间——跨模块同词不冲突（降级 `_I.READ` 与基类 `_I.READ`
   各自独立）；符号表的键数不设上限。
 - 面向调用者的具名成员（如 `get prepared` / `get done`）用普通字符串键。
@@ -75,7 +75,7 @@
   `SYMBOL.CONSTRUCTOR`（原来本地的 `.#ctor` 已删）；`_S` 里那几个持类值的
   槽仍本地声明（argot 只给 `CONSTRUCTOR`）。
 - **两个表文件分工**：`_Symbol.mjs` 只定义自己的表（纯叶子，不引用任
-  何东西）并出别名 `A`；对外的表单独放 `_External.mjs`，在那里导入并
+  何东西）并出别名 `A`；对外的表单独放 `_Borrow.mjs`，在那里导入并
   转发（`export * as CHUNK_READER from '../ChunkReader/_Symbol.mjs'`），
   并出别名 `_A`。现转发：`Part` →`DISTRIBUTOR`；`SourceReader` →`PART`；
   `ChunkReader` →`DISTRIBUTOR`+`PART`；`BufferChunkReader` →
@@ -85,14 +85,14 @@
   `CHUNK_STASH`+`PART`。
 - **两个别名各管一摊**：`A`（自己的符号，在 `_Symbol.mjs`）——长键的
   短名（`A.$I.AGENT` / `A.$I.CONSUMED_COUNT` / `A.I.CTOR.READER.CURRENT`…）；
-  `_A`（借来的表，在 `_External.mjs`）——`_A.STASH` / `_A.READER` /
+  `_A`（借来的表，在 `_Borrow.mjs`）——`_A.STASH` / `_A.READER` /
   `_A.BUFFER` / `_A.DEGRADED` / `_A.FORKED`。消费侧一眼分出“我的符号”与
   “外面借的”。
 - **`_A` 只收“需要短名”的借表**：它装的是“角色名 → 借来的表”
   （`_A.READER` = `ChunkReader`）。表名本身够短的（`PART` / `DISTRIBUTOR`）
-  按名从 `_External.mjs` 导入，不机械划进来；判据与 `A` 同：**别名比原名
+  按名从 `_Borrow.mjs` 导入，不机械划进来；判据与 `A` 同：**别名比原名
   短 × 消费点数量**（`_A.DISTRIBUTOR` 比 `DISTRIBUTOR` 还长，所以不进）。
-- **别名在定义处也套**：键开了就用（`ChunkReader/Abstract.mjs` 自己就写
+- **别名在定义处也套**：键开了就用（`ChunkReader/_Abstract.mjs` 自己就写
   `A.$I.CONSUMED_COUNT`）。没开键的长名可以随手开一个，判据是**键名长短 ×
   消费点数量**（短名开别名反而更长，见下条）。
 - **现存键集**（`A`）：`Distributor`——`I.{STASH,AGENT,SOURCE}`、
@@ -105,14 +105,14 @@
   `{READER}`；`Transferrer`——`{STASH}`；`Part` / `SourceReader` / `ChunkReader`
   没有 `_A`（借表都按名导入）。
 - **别名只给“直接子表 + 本模块自己的符号”**：家族的内部下级表不设别名，
-  按名从 `_External.mjs` 导入即可（写侧 `TRANSFERRER.$I.PREPARE`——名字本身
+  按名从 `_Borrow.mjs` 导入即可（写侧 `TRANSFERRER.$I.PREPARE`——名字本身
   已经够短，套一层别名只是多一层）。
 - **局部别名 vs 内联**：一行放不下时起局部别名
   （`const stash = this[A.$I.STASH]`）而不是自行折行；但**实参位置别内联**
   ——把一个 `this[…]` 拼进多参调用里，prettier 会把实参逐行展开，反而
   多占行、也更难读。判据：内联后整行仍 ≤80 列才收（`printWidth`）。
 - 环检查 `logs/check-import-cycles.mjs`：44 个模块，强连通分量 0。
-  `_Symbol.mjs` 只定义不引用，“向上借”落在 `_External.mjs` 这条叶子上，
+  `_Symbol.mjs` 只定义不引用，“向上借”落在 `_Borrow.mjs` 这条叶子上，
   环自然消失。
 - **宿主面 = 公开成员 + `_I` / `_S`**（后者经包出口的 `SYMBOL` 开出去，
   按家族分组）。`I` / `$I` / `A` **不开**：宿主需要一项能力时，优先把它
@@ -137,8 +137,8 @@
 
 ### 目录约定
 
-- 一目录一类：主类文件 `Abstract.mjs`/`Concrete.mjs`（存在性互斥）+
-  `index.mjs` + `_Symbol.mjs`（借用外部表时再多一个 `_External.mjs`）；
+- 一目录一类：主类文件 `_Abstract.mjs`/`_Concrete.mjs`（存在性互斥）+
+  `index.mjs` + `_Symbol.mjs`（借用外部表时再多一个 `_Borrow.mjs`）；
   目录路径即命名空间。读选项的模块再多一个 `Options.mjs`——模块内短名
   （见“Options（配置面）”）。
 - **子类目录平行于抽象类类目录**（兄弟层级）；向下扩展仅限非继承的
@@ -349,7 +349,7 @@
   `Options/Assert.mjs`（断言实现）、`Options/Preset.mjs`（以分配器为参、
   调若干 `Tune` 重新映射语义的函数族：`noRetry` / `unlimitedRetry` /
   `noTransferrerDumpRetry` …）。**不在类设计规则体系内**：没有
-  `_Symbol.mjs` / `_External.mjs`，自带本地槽位符号，也不进
+  `_Symbol.mjs` / `_Borrow.mjs`，自带本地槽位符号，也不进
   `Distributor/index.mjs` 的“只导出类”约定。
 - **形状**：每个分发器实例挂一张 **bag**（普通对象，键 = `item.name`，
   值 = 取值器函数），放在实例的 `OPTIONS` 槽位（构造器里 `install(this)`
@@ -981,7 +981,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `I.READ_BACK` 开头被 await，而 `READ_BACK` 只在 `PEEK` 未命中时才进得来
   ⇒ 队列还攥着的那些位，读路径既不碰介质、也不等 `prepared`、也不受寻道
   影响；分发器那侧再用 `.catch(noop)` 兜住初始化失败
-  （`Distributor/Abstract.mjs`），于是"初始化失败"只体现为一条 warn 与
+  （`Distributor/_Abstract.mjs`），于是"初始化失败"只体现为一条 warn 与
   将来那次真要用介质的读被拒。谁要是把 `await this[I.INITIALIZED]` 提到
   读路径开头，等于把整条队列交付一起拖进介质域——这是契约性质，不是实现
   细节。
@@ -1026,7 +1026,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   之外，也就堵掉了"绕开临时目录机制"这条路。
 - **参数与构造器对应（2026-10-01 定）**：构造器不收参数 ⇒ 钩子答 `[]`。
   于是**宿王不必**调 `setTransferrerArgs()`（框架给 `TRANSFERRER_ARGS` 的初值
-  就是 `[]`）；调了也照旧。钩子**必须是方法**：框架在 `Abstract.mjs:137`
+  就是 `[]`）；调了也照旧。钩子**必须是方法**：框架在 `_Abstract.mjs:137`
   是 `…[SYM](args)`，写成 getter 返回数组会当场撞 `is not a function`
   （实测）。换名字有口子（`generateFileName()`）；换目录没有——要就自己派生。
 - **入口给出通用对**：`ChunkReader` / `Transferrer` 两个别名与
@@ -1199,7 +1199,7 @@ DRAINING_ERROR` 无歧义地取出“那个把介质废掉的因”。
   `noRetry` / `unlimitedRetry` 不带所有者，因为它们管的是全部四个。
 - **仍未做**：`ForkHighWaterMark` 的域前缀是 `Fork`，而其它项用的都是类名
   （`ForkedReadableStream` 才是类）；`SourceConsumptionAgent.mjs` 与
-  `ForkedReadableStream/Concrete.mjs` 两处仍在直接读公开长名。
+  `ForkedReadableStream/_Concrete.mjs` 两处仍在直接读公开长名。
 
 **降级探针的那项改为每趟 pull 都读**（同日）：
 

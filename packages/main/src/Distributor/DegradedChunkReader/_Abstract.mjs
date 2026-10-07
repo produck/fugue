@@ -3,7 +3,7 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 
 import * as ChunkReader from '../ChunkReader/index.mjs';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
-import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_External.mjs';
+import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_Borrow.mjs';
 import * as Options from './Options.mjs';
 import * as Warning from '../Warning.mjs';
 

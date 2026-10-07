@@ -264,8 +264,8 @@ classDiagram
 - **子类平行于其抽象类的类目录建立目录**：抽象类占据一个"类目录"
   （如 `ChunkReader/` = `AbstractChunkReader`）；继承它的子类，其目录
   与抽象类的类目录**平行**——同一父目录下的兄弟层级，而非在其内部
-  向下扩展。子类目录内部按模块模式组织（`Abstract.mjs` / `Concrete.mjs`
-  - `index.mjs` + `_Symbol.mjs` + `_External.mjs`）；
+  向下扩展。子类目录内部按模块模式组织（`_Abstract.mjs` / `_Concrete.mjs`
+  - `index.mjs` + `_Symbol.mjs` + `_Borrow.mjs`）；
 - **唯一特例：极端简化单文件**。无子类、无专属符号、无需独立导出
   入口的实现，可用单文件模式不建目录，平铺在与抽象类类目录平行的
   位置，文件名即类名。当前只有 `SourceConsumptionAgent` 采用
@@ -278,28 +278,28 @@ classDiagram
 ```text
 Distributor/
   BufferChunkReader/    # AbstractChunkReader 子类（内存路径；有专属符号与桥）
-    Concrete.mjs
+    _Concrete.mjs
     index.mjs
     _Symbol.mjs
-    _External.mjs
+    _Borrow.mjs
   ChunkReader/          # AbstractChunkReader（抽象类类目录）
-    Abstract.mjs
+    _Abstract.mjs
     index.mjs
     Parser.mjs
     _Symbol.mjs
-    _External.mjs
+    _Borrow.mjs
   DegradedChunkReader/  # 降级家族：AbstractDegradedChunkReader（纯读抽象，与 ChunkReader/ 平行）
-    Abstract.mjs
+    _Abstract.mjs
     Options.mjs         # 选项短名（模块内）
     Transferrer/        # AbstractTransferrer（家族内部抽象：写侧 dump/write）
-      Abstract.mjs
+      _Abstract.mjs
       Options.mjs       # 选项短名（模块内）
       index.mjs
       _Symbol.mjs
-      _External.mjs
+      _Borrow.mjs
     index.mjs
     _Symbol.mjs
-    _External.mjs
+    _Borrow.mjs
   ChunkStash/           # 内部类（向下扩展）
   ForkedReadableStream/ # 内部类（向下扩展）
   SourceConsumptionAgent.mjs # 单文件特例：无子类、无专属符号、无独立导出

@@ -2,7 +2,7 @@ import { Common, Ow } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
-import { PART, _A } from './_External.mjs';
+import { PART, _A } from './_Borrow.mjs';
 import * as Options from './Options.mjs';
 import * as Part from '../../Part/index.mjs';
 import * as Warning from '../../Warning.mjs';

@@ -1,7 +1,7 @@
 import * as ChunkReader from '../ChunkReader/index.mjs';
 
 import { I, $I } from './_Symbol.mjs';
-import { DISTRIBUTOR, PART, _A } from './_External.mjs';
+import { DISTRIBUTOR, PART, _A } from './_Borrow.mjs';
 
 export default class BufferChunkReader extends ChunkReader.Abstract {
   [I.SUCCESSOR] = null;

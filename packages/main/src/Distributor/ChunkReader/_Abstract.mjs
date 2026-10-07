@@ -1,7 +1,7 @@
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import { $I, _I, A } from './_Symbol.mjs';
-import { DISTRIBUTOR, PART } from './_External.mjs';
+import { DISTRIBUTOR, PART } from './_Borrow.mjs';
 import * as Part from '../Part/index.mjs';
 import * as Parser from './Parser.mjs';
 

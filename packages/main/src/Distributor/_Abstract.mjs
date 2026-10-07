@@ -13,7 +13,7 @@ import * as Checker from './Checker.mjs';
 import * as Event from './Event.mjs';
 import * as Options from './Options/index.mjs';
 import { I, $I, _S, A } from './_Symbol.mjs';
-import { _A, PART, TRANSFERRER } from './_External.mjs';
+import { _A, PART, TRANSFERRER } from './_Borrow.mjs';
 
 const TERMINATION_MESSAGE = 'The distributor has been terminated';
 

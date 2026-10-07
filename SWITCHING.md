@@ -45,7 +45,7 @@
 
 ### 实现范围约束
 
-- **Distributor**（`Abstract.mjs` + 其 `I/$I` 状态）：唯一允许触碰
+- **Distributor**（`_Abstract.mjs` + 其 `I/$I` 状态）：唯一允许触碰
   `SOURCE_READER`、`BUFFER`、文件、阶段状态的代码。
 - **ChunkReader**（`ChunkReader/`）：纯读取装置，只维护自身进度
   （`$I.CONSUMED_CHUNK_COUNT`），不接触分发器共享状态。

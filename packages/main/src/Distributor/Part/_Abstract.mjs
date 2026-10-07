@@ -1,7 +1,7 @@
 import Abstract from '@produck/es-abstract';
 
 import { $I } from './_Symbol.mjs';
-import { DISTRIBUTOR } from './_External.mjs';
+import { DISTRIBUTOR } from './_Borrow.mjs';
 
 class AbstractPart {
   [$I.DISTRIBUTOR] = null;

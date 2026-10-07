@@ -1,5 +1,5 @@
 import { $I, A } from './_Symbol.mjs';
-import { _A, PART, TRANSFERRER } from './_External.mjs';
+import { _A, PART, TRANSFERRER } from './_Borrow.mjs';
 import * as Part from './Part/index.mjs';
 import * as Options from './Options/index.mjs';
 
