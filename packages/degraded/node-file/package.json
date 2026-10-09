@@ -5,7 +5,7 @@
   "dependencies": {
     "@produck/argot": "^0.3.1",
     "@produck/es-abstract": "^0.3.4",
-    "@produck/fugue": "^0.1.0"
+    "@produck/fugue": "^0.1.1"
   },
   "description": "The file degraded medium for @produck/fugue, on Node's file system.",
   "exports": {
@@ -45,5 +45,5 @@
     "test": "node test/index.mjs"
   },
   "type": "module",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

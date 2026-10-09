@@ -5,8 +5,8 @@
   "dependencies": {
     "@produck/argot": "^0.3.1",
     "@produck/es-abstract": "^0.3.4",
-    "@produck/fugue": "^0.1.0",
-    "@produck/fugue-degraded-node-file": "^0.1.0"
+    "@produck/fugue": "^0.1.1",
+    "@produck/fugue-degraded-node-file": "^0.1.1"
   },
   "description": "The temporary-file degraded medium for @produck/fugue: it names its own file under the OS temporary directory.",
   "exports": {
@@ -47,5 +47,5 @@
     "test": "node test/index.mjs"
   },
   "type": "module",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
