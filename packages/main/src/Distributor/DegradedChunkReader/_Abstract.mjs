@@ -1,7 +1,9 @@
 import { Common, Ow } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
+import { SubConstructorOf } from '@produck/es-abstract-member-constructor';
 
 import * as ChunkReader from '../ChunkReader/index.mjs';
+import * as Transferrer from './Transferrer/index.mjs';
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
 import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_Borrow.mjs';
 import * as Options from './Options.mjs';
@@ -155,6 +157,6 @@ export default Abstract(
     [_I.SEEK]: M.Method().returns(M.OrPromiseLike(M.Boolean)),
   }),
   Abstract.Static({
-    [_S.TRANSFERRER_CTOR]: M.Function,
+    [_S.TRANSFERRER_CTOR]: SubConstructorOf(Transferrer.Abstract),
   }),
 );

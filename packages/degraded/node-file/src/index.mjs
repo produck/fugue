@@ -1,5 +1,5 @@
-import { FileChunkReader } from './FileChunkReader.mjs';
-import { FileTransferrer } from './FileTransferrer.mjs';
+import { default as FileChunkReader } from './FileChunkReader.mjs';
+import { default as FileTransferrer } from './FileTransferrer.mjs';
 
 export {
   FileChunkReader,

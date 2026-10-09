@@ -3,9 +3,10 @@
     "url": "https://github.com/produck/fugue/issues"
   },
   "dependencies": {
-    "@produck/argot": "^0.3.0",
+    "@produck/argot": "^0.3.1",
     "@produck/deep-freeze-enumerable": "^1.1.1",
-    "@produck/es-abstract": "^0.3.3"
+    "@produck/es-abstract": "^0.3.4",
+    "@produck/es-abstract-member-constructor": "^0.1.1"
   },
   "description": "Distribute a single Node.js ReadableStream to multiple independent consumers, each receiving a complete copy with isolated progress.",
   "exports": {

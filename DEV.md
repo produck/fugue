@@ -130,8 +130,13 @@
   读经 `Options.Get.MaxChunkStashByteLength`、写经 `Options.Tune`——构造器只收
   `source`，没有第二个写入点；降级触发点因此确定可复现。
 - `_S.DEGRADED_CHUNK_READER_CTOR`：策略侧给出的降级读取器类引用，
-  degrade 时用它构造各 fork 的新读取器；暂以 `M.Function` 弱校（只确认
-  是函数），待收敛为“必须是降级家族的子类”。
+  degrade 时用它构造各 fork 的新读取器；声明由
+  `SubConstructorOf(DegradedChunkReader.Abstract)` 收紧（写侧同理校到
+  `Transferrer.Abstract`）。按上面"静态覆写绕过校验"那条，校不校取决于
+  声明方自己包不包：`node-file` 与 `temporary-file` 都把导出的类经
+  `SubConstructorProxy` 发出（`FileChunkReader` / `FileTransferrer` /
+  `TemporaryFileChunkReader` / `TemporaryFileTransferrer`），这两个槽因此
+  是真校的；下游自己再覆写静态槽，得自己包。
 
 ## 观点 / 决策 / 结论
 

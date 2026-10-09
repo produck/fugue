@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 
+import { SubConstructorProxy } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import * as Frame from './Frame.mjs';
@@ -16,7 +17,7 @@ const frameOf = (chunk) => {
   return Buffer.concat([header, chunk]);
 };
 
-export class FileTransferrer extends Fugue.Transferrer {
+class FileTransferrer extends Fugue.Transferrer {
   handle = null;
   writtenByteLength = 0;
 
@@ -74,3 +75,5 @@ export class FileTransferrer extends Fugue.Transferrer {
     await fs.promises.rm(this.pathname, REMOVE_OPTIONS);
   }
 }
+
+export default SubConstructorProxy(FileTransferrer);

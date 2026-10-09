@@ -1,11 +1,12 @@
 import * as fs from 'node:fs';
 
+import { SubConstructorProxy } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
-import { FileTransferrer } from './FileTransferrer.mjs';
+import { default as FileTransferrer } from './FileTransferrer.mjs';
 import * as Frame from './Frame.mjs';
 
-export class FileChunkReader extends Fugue.DegradedChunkReader {
+class FileChunkReader extends Fugue.DegradedChunkReader {
   static get [Fugue.SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]() {
     return FileTransferrer;
   }
@@ -70,3 +71,5 @@ export class FileChunkReader extends Fugue.DegradedChunkReader {
     this.handle = null;
   }
 }
+
+export default SubConstructorProxy(FileChunkReader);

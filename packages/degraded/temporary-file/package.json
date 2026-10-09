@@ -3,7 +3,8 @@
     "url": "https://github.com/produck/fugue/issues"
   },
   "dependencies": {
-    "@produck/argot": "^0.3.0",
+    "@produck/argot": "^0.3.1",
+    "@produck/es-abstract": "^0.3.4",
     "@produck/fugue": "^0.1.0",
     "@produck/fugue-degraded-node-file": "^0.1.0"
   },

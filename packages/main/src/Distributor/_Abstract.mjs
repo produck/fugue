@@ -1,7 +1,9 @@
 import { Common, Ow, SYMBOL, ThrowTypeError } from '@produck/argot';
-import Abstract, { Member as M } from '@produck/es-abstract';
+import Abstract from '@produck/es-abstract';
+import { SubConstructorOf } from '@produck/es-abstract-member-constructor';
 
 import * as BufferChunkReader from './BufferChunkReader/index.mjs';
+import * as DegradedChunkReader from './DegradedChunkReader/index.mjs';
 import * as ForkedReadableStream from './ForkedReadableStream/index.mjs';
 import * as ChunkStash from './ChunkStash/index.mjs';
 import * as SourceReader from './SourceReader/index.mjs';
@@ -191,6 +193,6 @@ class ReadableStreamDistributor extends EventTarget {
 export default Abstract(
   ReadableStreamDistributor,
   Abstract.Static({
-    [_S.DEGRADED_CHUNK_READER_CTOR]: M.Function,
+    [A._S.DEGRADED_CTOR]: SubConstructorOf(DegradedChunkReader.Abstract),
   }),
 );
