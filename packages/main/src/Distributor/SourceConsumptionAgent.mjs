@@ -5,7 +5,7 @@ import * as Options from './Options/index.mjs';
 
 const { Get } = Options;
 
-export default class SourceConsumptionAgent extends Part.Abstract {
+export default class SourceConsumptionAgent extends Part.Concrete {
   pulling = null;
   pulledChunkCount = 0;
 

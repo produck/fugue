@@ -330,9 +330,9 @@
 - 不在这里：`ChunkStash`（不持引用、不报告）· `ForkedReadableStream`
   （只用构造器闭包拿注册表与选项）· `ForkedReadableStreamRegistry` ·
   `Options`（读时才把分发器当参数传）。
-- `Part.Abstract` 直接构造抛错（`Abstract()` 的抽象构造保护，与家族基类
-  同）；`$I.WARN` 是真出口的转发，`EXCEPTIONS.md` 的「出口唯一」说的仍
-  是分发器那一个。
+- `Part` 是具体类（2026-10-10）：没有 `_I` 契约，直接构造不抛——原先
+  `Abstract()` 的抽象构造保护随之去掉。`$I.WARN` 是真出口的转发，
+  `EXCEPTIONS.md` 的「出口唯一」说的仍是分发器那一个。
 
 ### Options（配置面）
 

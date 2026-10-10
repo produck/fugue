@@ -114,7 +114,7 @@ graph TD
 | 模块                           | 职责                                                                                                                                                                   |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ReadableStreamDistributor`    | 抽象类——多拷贝分发，引用计数，策略切换。阈值是构造参数（默认 `1GiB`），落受保护字段                                                                                    |
-| `AbstractPart`                 | 分发器下元件的基类——受保护 `$I.DISTRIBUTOR` 持分发器、`$I.WARN` 转发到真出口（四个家族继承它）                                                                         |
+| `Part`                         | 分发器下元件的具体基类——受保护 `$I.DISTRIBUTOR` 持分发器、`$I.WARN` 转发到真出口（四个家族继承它）                                                                     |
 | `AbstractChunkReader`          | 拷贝侧读取抽象——经 `Part` 持分发器（`agent` / `stash` 按需取）；进度与前沿驱动（`$I.ENSURE_THEN_READ` → `$I.READ` → `_I.READ`）                                        |
 | `BufferChunkReader`            | 内存阶段——直接消费共享 `ChunkStash`，按 index 读取                                                                                                                     |
 | `AbstractDegradedChunkReader`  | 降级家族抽象——纯读；初始化屏障与 `close`；写侧类由 `_S.TRANSFERRER_CTOR`（家族）声明，实例由分发器降级时构造并交接                                                     |
@@ -181,9 +181,7 @@ classDiagram
         <<ReadableStream>>
     }
 
-    class AbstractPart {
-        <<abstract>>
-    }
+    class Part
 
     class AbstractChunkReader {
         <<abstract>>
@@ -209,10 +207,10 @@ classDiagram
 
     EventTarget <|-- ReadableStreamDistributor
     ReadableStream <|-- ForkedReadableStream
-    AbstractPart <|-- SourceReader
-    AbstractPart <|-- SourceConsumptionAgent
-    AbstractPart <|-- AbstractChunkReader
-    AbstractPart <|-- AbstractTransferrer
+    Part <|-- SourceReader
+    Part <|-- SourceConsumptionAgent
+    Part <|-- AbstractChunkReader
+    Part <|-- AbstractTransferrer
     AbstractChunkReader <|-- BufferChunkReader
     AbstractChunkReader <|-- AbstractDegradedChunkReader
     AbstractDegradedChunkReader <|-- FileChunkReader

@@ -1,9 +1,7 @@
-import Abstract from '@produck/es-abstract';
-
 import { $I } from './_Symbol.mjs';
 import { DISTRIBUTOR } from './_Borrow.mjs';
 
-class AbstractPart {
+class Part {
   [$I.DISTRIBUTOR] = null;
 
   constructor(distributor = null) {
@@ -19,4 +17,4 @@ class AbstractPart {
   }
 }
 
-export default Abstract(AbstractPart);
+export default Part;

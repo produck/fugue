@@ -1,1 +1,1 @@
-export { default as Abstract } from './_Abstract.mjs';
+export { default as Concrete } from './_Concrete.mjs';

@@ -7,7 +7,7 @@ import * as Warning from '../Warning.mjs';
 
 const CODE = Warning.CODES.SOURCE;
 
-export default class SourceReader extends Part.Abstract {
+export default class SourceReader extends Part.Concrete {
   [I.DONE] = false;
   [I.CANCELLED] = false;
   [I.READING] = null;

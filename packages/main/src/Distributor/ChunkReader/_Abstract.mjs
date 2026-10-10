@@ -5,7 +5,7 @@ import { DISTRIBUTOR, PART } from './_Borrow.mjs';
 import * as Part from '../Part/index.mjs';
 import * as Parser from './Parser.mjs';
 
-class AbstractChunkReader extends Part.Abstract {
+class AbstractChunkReader extends Part.Concrete {
   [A.$I.CONSUMED_COUNT] = 0;
 
   async [$I.READ]() {

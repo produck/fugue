@@ -9,7 +9,7 @@ import * as Warning from '../../Warning.mjs';
 
 const CODE = Warning.CODES.TRANSFERRER;
 
-class AbstractTransferrer extends Part.Abstract {
+class AbstractTransferrer extends Part.Concrete {
   static [_S.PARSE_ARGUMENTS](args) {
     return args;
   }
