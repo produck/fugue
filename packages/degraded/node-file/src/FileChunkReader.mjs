@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 
-import { SubConstructorProxy } from '@produck/es-abstract';
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import { default as FileTransferrer } from './FileTransferrer.mjs';
@@ -72,4 +72,4 @@ class FileChunkReader extends Fugue.DegradedChunkReader {
   }
 }
 
-export default SubConstructorProxy(FileChunkReader);
+export default SCP(FileChunkReader);

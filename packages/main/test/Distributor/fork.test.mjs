@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import {
@@ -15,7 +16,7 @@ import {
 const { _I: READER } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 const EXPECTED = {
-  UNIMPLEMENTED: { message: /must be implemented in the subclass/ },
+  UNIMPLEMENTED: { message: /must be implemented/ },
   TERMINATED: { message: /Distributor has been terminated/ },
 };
 
@@ -34,7 +35,7 @@ describe('.fork()', () => {
   });
 
   it('should report the missing DEGRADED_CHUNK_READER_CTOR', () => {
-    class Unfinished extends Fugue.Distributor {}
+    const Unfinished = SCP(class Unfinished extends Fugue.Distributor {});
 
     const unfinished = new Unfinished(makeSource());
     const attempt = () => unfinished.fork();

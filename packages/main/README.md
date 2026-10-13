@@ -328,7 +328,7 @@ class MyDistributor extends Fugue.Distributor {
 
 Required. It names the reader family this distributor forks into and
 degrades into. A subclass that leaves it empty fails at `fork()` with
-`must be implemented in the subclass`.
+`must be implemented`.
 
 ## Options
 

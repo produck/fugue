@@ -9,6 +9,7 @@ import { Readable, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { it } from 'node:test';
 
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
@@ -58,89 +59,95 @@ class DigestSink extends Writable {
   }
 }
 
-class FileTransferrer extends Fugue.Transferrer {
-  handle = null;
-  spooledByteLength = 0;
+const FileTransferrer = SCP(
+  class FileTransferrer extends Fugue.Transferrer {
+    handle = null;
+    spooledByteLength = 0;
 
-  constructor(path) {
-    super();
-    this.path = path;
-  }
-
-  async [TRANSFERRER.DUMP](stash) {
-    this.handle ??= await open(this.path, 'w+');
-
-    const buffer = Buffer.concat([...stash.chunks()].flatMap(frameOf));
-
-    await this.handle.write(buffer, 0, buffer.byteLength, 0);
-    this.spooledByteLength = buffer.byteLength;
-  }
-
-  async [TRANSFERRER.WRITE](chunk) {
-    const buffer = Buffer.concat(frameOf(chunk));
-
-    await this.handle.write(
-      buffer,
-      0,
-      buffer.byteLength,
-      this.spooledByteLength,
-    );
-
-    this.spooledByteLength += buffer.byteLength;
-  }
-
-  async [TRANSFERRER.DROP]() {
-    await this.handle?.close();
-    this.handle = null;
-  }
-}
-
-class FileReader extends Fugue.DegradedChunkReader {
-  static [READER_S.TRANSFERRER_CTOR] = FileTransferrer;
-
-  handle = null;
-  cursor = 0;
-
-  async [READER.INITIALIZE]() {
-    this.handle = await open(this.transferrer.path, 'r');
-  }
-
-  async [READER.SEEK]() {
-    const byteLength = await readFrameHeader(this.handle, this.cursor);
-
-    if (byteLength === null) {
-      return false;
+    constructor(path) {
+      super();
+      this.path = path;
     }
 
-    this.cursor += FRAME_HEADER + byteLength;
+    async [TRANSFERRER.DUMP](stash) {
+      this.handle ??= await open(this.path, 'w+');
 
-    return true;
-  }
+      const buffer = Buffer.concat([...stash.chunks()].flatMap(frameOf));
 
-  async [READER.READ]() {
-    const byteLength = await readFrameHeader(this.handle, this.cursor);
-
-    if (byteLength === null) {
-      return { done: true, value: undefined };
+      await this.handle.write(buffer, 0, buffer.byteLength, 0);
+      this.spooledByteLength = buffer.byteLength;
     }
 
-    const value = Buffer.alloc(byteLength);
+    async [TRANSFERRER.WRITE](chunk) {
+      const buffer = Buffer.concat(frameOf(chunk));
 
-    await this.handle.read(value, 0, byteLength, this.cursor + FRAME_HEADER);
-    this.cursor += FRAME_HEADER + byteLength;
+      await this.handle.write(
+        buffer,
+        0,
+        buffer.byteLength,
+        this.spooledByteLength,
+      );
 
-    return { done: false, value };
-  }
+      this.spooledByteLength += buffer.byteLength;
+    }
 
-  async [READER.CLOSE]() {
-    await this.handle?.close();
-    this.handle = null;
-  }
-}
+    async [TRANSFERRER.DROP]() {
+      await this.handle?.close();
+      this.handle = null;
+    }
+  },
+);
 
-class SpoolDistributor extends Fugue.Distributor {
-  static [DEGRADED_CHUNK_READER_CTOR] = FileReader;
-}
+const FileReader = SCP(
+  class FileReader extends Fugue.DegradedChunkReader {
+    static [READER_S.TRANSFERRER_CTOR] = FileTransferrer;
+
+    handle = null;
+    cursor = 0;
+
+    async [READER.INITIALIZE]() {
+      this.handle = await open(this.transferrer.path, 'r');
+    }
+
+    async [READER.SEEK]() {
+      const byteLength = await readFrameHeader(this.handle, this.cursor);
+
+      if (byteLength === null) {
+        return false;
+      }
+
+      this.cursor += FRAME_HEADER + byteLength;
+
+      return true;
+    }
+
+    async [READER.READ]() {
+      const byteLength = await readFrameHeader(this.handle, this.cursor);
+
+      if (byteLength === null) {
+        return { done: true, value: undefined };
+      }
+
+      const value = Buffer.alloc(byteLength);
+
+      await this.handle.read(value, 0, byteLength, this.cursor + FRAME_HEADER);
+      this.cursor += FRAME_HEADER + byteLength;
+
+      return { done: false, value };
+    }
+
+    async [READER.CLOSE]() {
+      await this.handle?.close();
+      this.handle = null;
+    }
+  },
+);
+
+const SpoolDistributor = SCP(
+  class SpoolDistributor extends Fugue.Distributor {
+    static [DEGRADED_CHUNK_READER_CTOR] = FileReader;
+  },
+);
 
 const spoolUpload = async (request, response, state) => {
   const distributor = new SpoolDistributor(Readable.toWeb(request));

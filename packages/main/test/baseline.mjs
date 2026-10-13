@@ -1,3 +1,4 @@
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
@@ -38,64 +39,70 @@ export const settle = async (turns = 6) => {
   }
 };
 
-export class TestTransferrer extends Fugue.Transferrer {
-  [MEDIUM] = [];
+export const TestTransferrer = SCP(
+  class TestTransferrer extends Fugue.Transferrer {
+    [MEDIUM] = [];
 
-  constructor(...args) {
-    super();
-    this.args = args;
-  }
-
-  [TRANSFERRER.DUMP](stash) {
-    this[MEDIUM] = [...stash.chunks()];
-  }
-
-  async [TRANSFERRER.WRITE](buffer) {
-    this[MEDIUM].push(buffer);
-  }
-
-  [TRANSFERRER.DROP]() {}
-
-  get medium() {
-    return this[MEDIUM];
-  }
-}
-
-export class TestDegradedChunkReader extends Fugue.DegradedChunkReader {
-  static [READER_S.TRANSFERRER_CTOR] = TestTransferrer;
-
-  [CURSOR] = 0;
-
-  [READER.INITIALIZE]() {}
-
-  [READER.SEEK]() {
-    if (this[CURSOR] >= this.transferrer.medium.length) {
-      return false;
+    constructor(...args) {
+      super();
+      this.args = args;
     }
 
-    this[CURSOR]++;
-
-    return true;
-  }
-
-  [READER.READ]() {
-    const medium = this.transferrer.medium;
-
-    if (this[CURSOR] >= medium.length) {
-      return { done: true, value: undefined };
+    [TRANSFERRER.DUMP](stash) {
+      this[MEDIUM] = [...stash.chunks()];
     }
 
-    const value = medium[this[CURSOR]++];
+    async [TRANSFERRER.WRITE](buffer) {
+      this[MEDIUM].push(buffer);
+    }
 
-    return { done: false, value };
-  }
+    [TRANSFERRER.DROP]() {}
 
-  [READER.CLOSE]() {}
-}
+    get medium() {
+      return this[MEDIUM];
+    }
+  },
+);
 
-export class TestDistributor extends Fugue.Distributor {
-  static [DEGRADED_CHUNK_READER_CTOR] = TestDegradedChunkReader;
-}
+export const TestDegradedChunkReader = SCP(
+  class TestDegradedChunkReader extends Fugue.DegradedChunkReader {
+    static [READER_S.TRANSFERRER_CTOR] = TestTransferrer;
+
+    [CURSOR] = 0;
+
+    [READER.INITIALIZE]() {}
+
+    [READER.SEEK]() {
+      if (this[CURSOR] >= this.transferrer.medium.length) {
+        return false;
+      }
+
+      this[CURSOR]++;
+
+      return true;
+    }
+
+    [READER.READ]() {
+      const medium = this.transferrer.medium;
+
+      if (this[CURSOR] >= medium.length) {
+        return { done: true, value: undefined };
+      }
+
+      const value = medium[this[CURSOR]++];
+
+      return { done: false, value };
+    }
+
+    [READER.CLOSE]() {}
+  },
+);
+
+export const TestDistributor = SCP(
+  class TestDistributor extends Fugue.Distributor {
+    static [DEGRADED_CHUNK_READER_CTOR] = TestDegradedChunkReader;
+  },
+);
 
 export const makeDistributor = (chunks = []) =>
   new TestDistributor(makeSource(chunks));
@@ -107,18 +114,22 @@ export const makeFamily = (bases = {}) => {
   } = bases;
   const created = [];
 
-  class Medium extends MediumBase {
-    constructor(...args) {
-      super(...args);
-      created.push(this);
-    }
-  }
+  const Medium = SCP(
+    class Medium extends MediumBase {
+      constructor(...args) {
+        super(...args);
+        created.push(this);
+      }
+    },
+  );
 
-  class Reader extends ReaderBase {}
+  const Reader = SCP(class Reader extends ReaderBase {});
 
   Reader[READER_S.TRANSFERRER_CTOR] = Medium;
 
-  class FamilyDistributor extends Fugue.Distributor {}
+  const FamilyDistributor = SCP(
+    class FamilyDistributor extends Fugue.Distributor {},
+  );
 
   FamilyDistributor[DEGRADED_CHUNK_READER_CTOR] = Reader;
 

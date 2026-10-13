@@ -1,7 +1,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { SubConstructorProxy } from '@produck/es-abstract';
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 import * as File from '@produck/fugue-degraded-node-file';
 import { ThrowTypeError } from '@produck/argot';
@@ -47,8 +47,8 @@ const ChunkReader = class TemporaryFileChunkReader extends File.ChunkReader {
   }
 };
 
-export const TemporaryFileTransferrer = SubConstructorProxy(Transferrer);
-export const TemporaryFileChunkReader = SubConstructorProxy(ChunkReader);
+export const TemporaryFileTransferrer = SCP(Transferrer);
+export const TemporaryFileChunkReader = SCP(ChunkReader);
 
 export {
   TemporaryFileChunkReader as ChunkReader,

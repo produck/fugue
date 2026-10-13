@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 
-import { SubConstructorProxy } from '@produck/es-abstract';
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import * as Frame from './Frame.mjs';
@@ -76,4 +76,4 @@ class FileTransferrer extends Fugue.Transferrer {
   }
 }
 
-export default SubConstructorProxy(FileTransferrer);
+export default SCP(FileTransferrer);

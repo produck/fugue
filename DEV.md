@@ -9,9 +9,10 @@
 
 - `Abstract(cls, Abstract({...}))` 声明抽象实例成员；`Abstract.Static({...})`
   声明抽象静态成员；`Member as M` 提供 `M.Method().returns(...)` 契约。
-- 成员约束在**实例属性访问时惰性校验**（缺实现抛 "must be implemented
-  in the subclass"），不阻断 `extends`；静态覆写同样绕过运行时校验，
-  需强约束的下游用 `SubConstructorProxy(Sub)` 包裹。
+- 约束分两层：抽象成员在**实例属性访问时惰性校验**（缺实现抛
+  `must be implemented`），不阻断 `extends`；声明了静态成员的抽象更硬
+  ——具体类不先 `SubConstructorProxy(cls)` 注册，`new` 当场抛
+  `It MUST SubConstructorProxy("…")`（0.4.0 起）。
 - 契约返回类型用 `OrPromiseLike(...)` 表达"或同步或 Promise"：void 钩子
   标 `OrPromiseLike(Undefined)`；携带值/标志的钩子按其形态（如 `_I.SEEK`
   标 `OrPromiseLike(Boolean)`；`_I.READ` 返回 `{ value, done }`，契约保持

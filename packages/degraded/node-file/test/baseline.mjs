@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import * as NodeFile from '@produck/fugue-degraded-node-file';
@@ -49,28 +50,34 @@ export const makeFamily = (bases = {}) => {
   } = bases;
   const created = [];
 
-  class Medium extends MediumBase {
-    release = null;
+  const Medium = SCP(
+    class Medium extends MediumBase {
+      release = null;
 
-    constructor(...args) {
-      super(...args);
-      created.push(this);
-    }
+      constructor(...args) {
+        super(...args);
+        created.push(this);
+      }
 
-    [TRANSFERRER.DROP]() {
-      this.release = super[TRANSFERRER.DROP]();
+      [TRANSFERRER.DROP]() {
+        this.release = super[TRANSFERRER.DROP]();
 
-      return this.release;
-    }
-  }
+        return this.release;
+      }
+    },
+  );
 
-  class Reader extends ReaderBase {
-    static get [READER_S.TRANSFERRER_CTOR]() {
-      return Medium;
-    }
-  }
+  const Reader = SCP(
+    class Reader extends ReaderBase {
+      static get [READER_S.TRANSFERRER_CTOR]() {
+        return Medium;
+      }
+    },
+  );
 
-  class FamilyDistributor extends Fugue.Distributor {}
+  const FamilyDistributor = SCP(
+    class FamilyDistributor extends Fugue.Distributor {},
+  );
 
   FamilyDistributor[DEGRADED_CHUNK_READER_CTOR] = Reader;
 

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { describe, it } from 'node:test';
 
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import * as TemporaryFile from '@produck/fugue-degraded-temporary-file';
@@ -23,11 +24,13 @@ const EXPECTED = {
 };
 
 const makeNaming = (name) => {
-  return class extends Transferrer {
+  class NamedTransferrer extends Transferrer {
     static generateFileName() {
       return name;
     }
-  };
+  }
+
+  return SCP(NamedTransferrer);
 };
 
 const makeSpooling = (chunks, bases) => {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 
+import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import {
@@ -15,7 +16,7 @@ const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
 const { _I: READER } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
 
 const EXPECTED = {
-  UNIMPLEMENTED: { message: /must be implemented in the subclass/ },
+  UNIMPLEMENTED: { message: /must be implemented/ },
 };
 
 it('should be false while the stash holds the data', async () => {
@@ -75,23 +76,27 @@ it('should follow DegradeOnChunkStashFullAndDone for a full, ended stash', async
 });
 
 it('should stay false, rejecting the read, when the family is unfinished', async () => {
-  class UnfinishedReader extends Fugue.DegradedChunkReader {
-    [READER.INITIALIZE]() {}
+  const UnfinishedReader = SCP(
+    class UnfinishedReader extends Fugue.DegradedChunkReader {
+      [READER.INITIALIZE]() {}
 
-    [READER.SEEK]() {
-      return false;
-    }
+      [READER.SEEK]() {
+        return false;
+      }
 
-    [READER.READ]() {
-      return { done: true, value: undefined };
-    }
+      [READER.READ]() {
+        return { done: true, value: undefined };
+      }
 
-    [READER.CLOSE]() {}
-  }
+      [READER.CLOSE]() {}
+    },
+  );
 
-  class UnfinishedDistributor extends Fugue.Distributor {
-    static [DEGRADED_CHUNK_READER_CTOR] = UnfinishedReader;
-  }
+  const UnfinishedDistributor = SCP(
+    class UnfinishedDistributor extends Fugue.Distributor {
+      static [DEGRADED_CHUNK_READER_CTOR] = UnfinishedReader;
+    },
+  );
 
   const distributor = new UnfinishedDistributor(makeSource(['a', 'b']));
   const reader = distributor.fork().getReader();
