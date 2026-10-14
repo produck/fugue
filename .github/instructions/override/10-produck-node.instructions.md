@@ -10,13 +10,10 @@ Deltas against `.github/instructions/produck/10-produck-node.instructions.md`.
 
 - The baseline requires a root `docs/` directory. This repository has none:
   root-level `*.md` files carry that role.
-  - `DEV.md`: current conclusions per topic (decisions, trade-offs, measured
-    evidence).
-  - `DESIGN.md`: design document (semantics, architecture, lifecycle,
-    observability).
-  - `EXCEPTIONS.md`: the normative behaviour after an exception (failure
-    domains, reporting surface, recovery ownership).
-  - `SWITCHING.md`: migration notes and open items.
+  - `DESIGN.md`: the single formal design document — goals, semantics, API,
+    architecture and conventions, phase switching, storage formats, members,
+    lifecycle, backpressure, the exception surface, observability. Current
+    conclusions only: no abandoned concepts, no evolution history.
   - `TODO.md`: framework-layer improvement candidates, each with its cost and
     the decision (do / later / not).
 - Documents are written in Chinese prose with English terms, headings `#`
