@@ -20,6 +20,7 @@ On Node, one medium is already written:
 [File medium](#file-medium).
 
 - [How it works](#how-it-works)
+- [What you extend](#what-you-extend)
 - [Install](#install)
 - [Quick start](#quick-start)
 - [File medium](#file-medium)
@@ -58,6 +59,66 @@ framework catches the medium's cursor up before each read back.
 A source that ends while still under the limit never degrades — unless
 `DegradeOnChunkStashFullAndDone` asks for it.
 
+## What you extend
+
+Three abstract classes to subclass, and your medium behind them. The
+framework builds the reader and the transferrer for you, and reaches both
+through the two static slots below; the distributor itself is yours to
+construct.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class Distributor {
+        <<abstract>>
+        fork()
+        destroy()
+    }
+    class YourDistributor["👤 YourDistributor"] {
+        \_S.DEGRADED_CHUNK_READER_CTOR
+    }
+    class DegradedChunkReader {
+        <<abstract>>
+    }
+    class YourReader["👤 YourReader"] {
+        \_S.TRANSFERRER_CTOR
+        \_I.INITIALIZE()
+        \_I.SEEK()
+        \_I.READ()
+        \_I.CLOSE()
+    }
+    class Transferrer {
+        <<abstract>>
+    }
+    class YourTransferrer["👤 YourTransferrer"] {
+        \_I.WRITE()
+        \_I.DROP()
+    }
+
+    Distributor <|-- YourDistributor : extend
+    DegradedChunkReader <|-- YourReader : extend
+    Transferrer <|-- YourTransferrer : extend
+
+    YourDistributor ..> YourReader
+    YourReader ..> YourTransferrer
+    YourDistributor --> YourReader : one per copy
+    YourDistributor --> YourTransferrer : one at the degrade
+```
+
+| You extend            | You must provide                                                         | You may override                                 |
+| --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------ |
+| `Distributor`         | `_S.DEGRADED_CHUNK_READER_CTOR`                                          | —                                                |
+| `DegradedChunkReader` | `_S.TRANSFERRER_CTOR`, `_I.INITIALIZE`, `_I.SEEK`, `_I.READ`, `_I.CLOSE` | —                                                |
+| `Transferrer`         | `_I.WRITE`, `_I.DROP`                                                    | `_S.PARSE_ARGUMENTS`, `_I.INITIALIZE`, `_I.DUMP` |
+
+A medium is wired from the bottom up: the distributor names its reader
+family, the reader names its transferrer, and no one else is named. One
+transferrer serves the whole distributor, built at the degrade; one reader
+serves one copy, built when that copy first needs the medium. `destroy()`
+releases both — the transferrer through `DROP`, each reader through
+`CLOSE`.
+
 ## Install
 
 ```sh
@@ -75,22 +136,18 @@ into is named by one static slot. The smallest useful medium is memory.
 ```js
 import * as Fugue from '@produck/fugue';
 
-const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
-const { _I: READER, _S: READER_S } = Fugue.SYMBOL.DEGRADED_CHUNK_READER;
-const { _I: TRANSFERRER } = Fugue.SYMBOL.TRANSFERRER;
-
 class MemoryTransferrer extends Fugue.Transferrer {
   records = [];
 
-  [TRANSFERRER.DUMP](stash) {
+  [Fugue.SYMBOL.TRANSFERRER._I.DUMP](stash) {
     this.records = [...stash.chunks()];
   }
 
-  [TRANSFERRER.WRITE](chunk) {
+  [Fugue.SYMBOL.TRANSFERRER._I.WRITE](chunk) {
     this.records.push(chunk);
   }
 
-  [TRANSFERRER.DROP]() {
+  [Fugue.SYMBOL.TRANSFERRER._I.DROP]() {
     this.records = [];
   }
 
@@ -100,13 +157,15 @@ class MemoryTransferrer extends Fugue.Transferrer {
 }
 
 class MemoryReader extends Fugue.DegradedChunkReader {
-  static [READER_S.TRANSFERRER_CTOR] = MemoryTransferrer;
+  static get [Fugue.SYMBOL.DEGRADED_CHUNK_READER._S.TRANSFERRER_CTOR]() {
+    return MemoryTransferrer;
+  }
 
   cursor = 0;
 
-  [READER.INITIALIZE]() {}
+  [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.INITIALIZE]() {}
 
-  [READER.SEEK]() {
+  [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.SEEK]() {
     if (this.cursor >= this.transferrer.medium.length) {
       return false;
     }
@@ -116,7 +175,7 @@ class MemoryReader extends Fugue.DegradedChunkReader {
     return true;
   }
 
-  [READER.READ]() {
+  [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.READ]() {
     const medium = this.transferrer.medium;
 
     if (this.cursor >= medium.length) {
@@ -126,11 +185,13 @@ class MemoryReader extends Fugue.DegradedChunkReader {
     return { done: false, value: medium[this.cursor++] };
   }
 
-  [READER.CLOSE]() {}
+  [Fugue.SYMBOL.DEGRADED_CHUNK_READER._I.CLOSE]() {}
 }
 
 class MemoryDistributor extends Fugue.Distributor {
-  static [DEGRADED_CHUNK_READER_CTOR] = MemoryReader;
+  static get [Fugue.SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR]() {
+    return MemoryReader;
+  }
 }
 ```
 
@@ -182,10 +243,8 @@ through the static slot, so a distributor subclass is the whole of it:
 import * as Fugue from '@produck/fugue';
 import { FileChunkReader } from '@produck/fugue-degraded-node-file';
 
-const { DEGRADED_CHUNK_READER_CTOR } = Fugue.SYMBOL.DISTRIBUTOR._S;
-
 class UploadDistributor extends Fugue.Distributor {
-  static get [DEGRADED_CHUNK_READER_CTOR]() {
+  static get [Fugue.SYMBOL.DISTRIBUTOR._S.DEGRADED_CHUNK_READER_CTOR]() {
     return FileChunkReader;
   }
 }
@@ -283,9 +342,8 @@ One shot. The args are parsed once, by your transferrer's
 degrade time.
 
 ```js
-// `SYMBOL` and `TRANSFERRER` come from the Quick start above.
 class FileTransferrer extends Fugue.Transferrer {
-  static [TRANSFERRER._S.PARSE_ARGUMENTS](args) {
+  static [Fugue.SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args) {
     const [path] = args;
 
     return [path];
@@ -659,8 +717,8 @@ Fugue.SYMBOL.DEGRADED_CHUNK_READER._S; // TRANSFERRER_CTOR
 Fugue.SYMBOL.DISTRIBUTOR._S; // DEGRADED_CHUNK_READER_CTOR
 ```
 
-Destructure them once at the top of your medium module, as in
-[Quick start](#quick-start).
+Every path starts at `Fugue.SYMBOL`; the [Quick start](#quick-start) writes
+them in full.
 
 ## License
 
