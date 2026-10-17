@@ -24,6 +24,7 @@ On Node, one medium is already written:
 - [Install](#install)
 - [Quick start](#quick-start)
 - [File medium](#file-medium)
+- [Fast drain](#fast-drain)
 - [Examples](#examples)
 - [Distributor](#distributor)
 - [Options](#options)
@@ -267,6 +268,23 @@ the same medium, naming its own file under the OS temporary directory.
 
 A file is not the answer for every host: [The medium](#the-medium) below
 is the contract any other one has to honour.
+
+## Fast drain
+
+When the goal is to exhaust the source, not to read it, pipe a copy into
+`FastDrainWritableStream`: every chunk is dropped on arrival, nothing is
+inspected, and backpressure is left wide open.
+
+```js
+const pumping = distributor.fork().pipeTo(new Fugue.FastDrainWritableStream());
+```
+
+It must be **one instance per copy** — `pipeTo` closes its destination
+when the copy ends, so a shared instance cannot serve a second fork.
+
+The trade-off is yours to weigh: draining fast means crossing
+`MaxChunkStashByteLength` fast, so the medium peaks near the whole source,
+and once the one-way door opens a broken medium latches its error.
 
 ## Examples
 

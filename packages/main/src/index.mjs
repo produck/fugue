@@ -29,3 +29,7 @@ export const SYMBOL = deepFreeze({
     _S: DISTRIBUTOR._S,
   },
 });
+
+import FastDrainWritableStream from './FastDrainWritableStream.mjs';
+
+export { FastDrainWritableStream, FastDrainWritableStream as FastDrain };

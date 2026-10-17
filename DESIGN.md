@@ -84,6 +84,7 @@
 | `SourceConsumptionAgent`       | 唯一源消费方：单飞拉取 + 落点写入      |
 | `ForkedReadableStream`         | 拷贝流（`ReadableStream` 子类）        |
 | `ForkedReadableStreamRegistry` | fork 活体注册表                        |
+| `FastDrainWritableStream`      | 快耗 sink：丢弃每块、放开背压          |
 
 ```mermaid
 classDiagram
@@ -761,6 +762,11 @@ cancel，以及 `destroy()` 收摊。前三条会出表，故收摊通常扫不�
 客观上最快拷贝的消费节奏决定了源推进速率，于是快速消费自然获得附带
 收益（连接生命周期短、数据先行落盘、减少攻击面），但分发器不替下游做这个
 决定——它是消费节奏的自然结果，不是预设策略。
+
+**尽快耗源是一个预设 sink**：`FastDrainWritableStream` 的 `write` 是空操作、
+不设 HWM，`pipeTo` 挂上即让那份拷贝尽快把源拉到底，其他业务拷贝从容落后。
+每拷贝一个实例（`pipeTo` 结束会关掉 sink）。代价归宿主：尽快耗源 ⇒ 尽快
+触发降级，介质峰值 ≈ 整份源；单向门一旦触发，介质坏了就闩错。
 
 ## 异常面
 

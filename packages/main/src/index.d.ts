@@ -183,6 +183,22 @@ export declare abstract class DegradedChunkReader<
   abstract [READER_I.SEEK](): boolean | PromiseLike<boolean>;
 }
 
+/**
+ * A sink that keeps up with the source: every chunk is dropped on arrival,
+ * nothing is inspected, and backpressure is left wide open. Pair it with a
+ * fork when the goal is to exhaust the source, not to read it.
+ *
+ * Use one instance per copy — `pipeTo` closes its destination when the copy
+ * ends, so a shared instance cannot serve a second one.
+ */
+export declare class FastDrainWritableStream extends WritableStream<unknown> {
+  constructor();
+}
+
+export declare const FastDrain: typeof FastDrainWritableStream;
+
+export type FastDrain = FastDrainWritableStream;
+
 export declare abstract class Distributor<
   Chunk extends Uint8Array = Uint8Array,
 > extends EventTarget {
