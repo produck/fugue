@@ -305,18 +305,31 @@ export declare namespace Event {
     constructor(code: Code, payload: WarnPayloadOf<Code>);
   }
 
-  export type MetricCode = 'source-consumed-byte-length';
+  /**
+   * The delta each code carries, in the vocabulary of `Metric.CODES` — the
+   * two tables are one contract and move together. Every delta is a counter
+   * increment.
+   */
+  export interface MetricDeltaMap {
+    'source-consumed-byte-length': number;
+  }
+
+  export type MetricCode = keyof MetricDeltaMap;
+
+  export type MetricDeltaOf<Code extends MetricCode> = MetricDeltaMap[Code];
 
   export type MetricDetail = {
-    [Code in MetricCode]: { code: Code; delta: number };
+    [Code in MetricCode]: { code: Code; delta: MetricDeltaMap[Code] };
   }[MetricCode];
 
   /**
    * A counter increment: the host adds `delta` up. No absolute value is kept
    * by the distributor, so a listener must attach before the first pull.
    */
-  class MetricEvent extends DistributorEvent<MetricDetail> {
-    constructor(code: MetricCode, delta: number);
+  class MetricEvent<
+    Code extends MetricCode = MetricCode,
+  > extends DistributorEvent<MetricDetail> {
+    constructor(code: Code, delta: MetricDeltaOf<Code>);
   }
 
   const Degrade: typeof DegradeEvent;
