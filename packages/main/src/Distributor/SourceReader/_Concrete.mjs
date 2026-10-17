@@ -4,8 +4,10 @@ import { I } from './_Symbol.mjs';
 import { PART } from './_Borrow.mjs';
 import * as Part from '../Part/index.mjs';
 import * as Warning from '../Warning.mjs';
+import * as Metric from '../Metric.mjs';
 
 const CODE = Warning.CODES.SOURCE;
+const METRIC = Metric.CODES.SOURCE;
 
 export default class SourceReader extends Part.Concrete {
   [I.DONE] = false;
@@ -44,6 +46,13 @@ export default class SourceReader extends Part.Concrete {
 
       if (!this[I.CANCELLED]) {
         this[I.DONE] = result.done;
+      }
+
+      if (!result.done) {
+        this[PART.$I.METRIC](
+          METRIC.CONSUMED_BYTE_LENGTH,
+          result.value.byteLength,
+        );
       }
 
       return result;

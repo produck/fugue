@@ -76,6 +76,22 @@ describe('ForkedReadableStream', () => {
         assert.deepEqual(await drain(distributor.fork()), ['a', 'b', 'c']);
       });
 
+      it('should dispatch the metric event for every consumed source chunk', async () => {
+        const distributor = new TestDistributor(makeSource(['a', 'bc']));
+        const samples = [];
+
+        distributor.addEventListener('metric', (event) => {
+          samples.push(event.detail);
+        });
+
+        assert.deepEqual(await drain(distributor.fork()), ['a', 'bc']);
+
+        assert.deepEqual(samples, [
+          { code: 'source-consumed-byte-length', delta: 1 },
+          { code: 'source-consumed-byte-length', delta: 2 },
+        ]);
+      });
+
       it('should carry on without a gap across a switch', async () => {
         const distributor = new TestDistributor(makeSource(['a', 'b', 'c']));
         const forked = distributor.fork();

@@ -903,6 +903,9 @@ cancel，以及 `destroy()` 收摊。前三条会出表，故收摊通常扫不�
 - **不去抖、不聚合、不发回落事件**：同一个因可以出多条（每次尝试一条），
   这些是水准信号，限频归宿主；**计数由分发器记账**——先记数再派发，所以
   监听器里读到的次数含当前这一条。
+- **`metric` 自带增量，框架不记账**：与 `warn` 同出口、同判别词（`code`、
+  发生处前缀），但 `metric` 是计数增量（`{ code, delta }`），总数由宿主
+  累加；`warn` 是单元事件，计数才由分发器记。任何量都不以快照形式暴露。
 - **监听器抛异常不在异常面上**：`dispatchEvent` 不抛，一个抛异常的监听器
   只会成为 `uncaughtException`，不影响任何读。
 
@@ -925,15 +928,19 @@ cancel，以及 `destroy()` 收摊。前三条会出表，故收摊通常扫不�
   （载荷 `{ byteLength }`）。
 - 是否已终结可用性：`get terminated`。
 - 积压：`warn('transferrer-backlog', { pendingByteLength })`。
+- 源消费量：`metric` 事件，`{ code: 'source-consumed-byte-length', delta }`，
+  每次从源接受一个 chunk 一条；总数由宿主累加，且**须在首个 pull 之前同步
+  订阅**（构造后、第一个 `await` 前）。
 - warn 计数：`getWarningCount(code)`。
 - 生命周期事件：`fork` / `terminate` / `warn`。
 
-| 事件        | 含义                      |
-| ----------- | ------------------------- |
-| `degrade`   | 内存相 → 介质相切换已发生 |
-| `fork`      | 新 fork 上线              |
-| `terminate` | 分发器可用性终结被调用    |
-| `warn`      | 可恢复异常与观测信号      |
+| 事件        | 含义                          |
+| ----------- | ----------------------------- |
+| `degrade`   | 内存相 → 介质相切换已发生     |
+| `fork`      | 新 fork 上线                  |
+| `terminate` | 分发器可用性终结被调用        |
+| `warn`      | 可恢复异常与观测信号          |
+| `metric`    | 计数增量（`{ code, delta }`） |
 
 **仓库内 / 调试**（经受保护符号，宿主拿不到）：
 

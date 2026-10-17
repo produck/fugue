@@ -28,9 +28,16 @@ export class WarnEvent extends DistributorEvent {
   }
 }
 
+export class MetricEvent extends DistributorEvent {
+  constructor(code, delta) {
+    super('metric', { code, delta });
+  }
+}
+
 export {
   DegradeEvent as Degrade,
   ForkEvent as Fork,
   TerminateEvent as Terminate,
   WarnEvent as Warn,
+  MetricEvent as Metric,
 };

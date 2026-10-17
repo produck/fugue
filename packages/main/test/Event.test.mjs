@@ -68,4 +68,22 @@ describe('Event', () => {
       });
     });
   });
+
+  describe('::Metric', () => {
+    it('should be a CustomEvent of type metric', () => {
+      const event = new Fugue.Event.Metric('source-consumed-byte-length', 1024);
+
+      assert.ok(event instanceof CustomEvent);
+      assert.equal(event.type, 'metric');
+    });
+
+    describe('>detail', () => {
+      it('should carry the code and its delta', () => {
+        const code = 'source-consumed-byte-length';
+        const event = new Fugue.Event.Metric(code, 1024);
+
+        assert.deepEqual(event.detail, { code, delta: 1024 });
+      });
+    });
+  });
 });

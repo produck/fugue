@@ -305,6 +305,20 @@ export declare namespace Event {
     constructor(code: Code, payload: WarnPayloadOf<Code>);
   }
 
+  export type MetricCode = 'source-consumed-byte-length';
+
+  export type MetricDetail = {
+    [Code in MetricCode]: { code: Code; delta: number };
+  }[MetricCode];
+
+  /**
+   * A counter increment: the host adds `delta` up. No absolute value is kept
+   * by the distributor, so a listener must attach before the first pull.
+   */
+  class MetricEvent extends DistributorEvent<MetricDetail> {
+    constructor(code: MetricCode, delta: number);
+  }
+
   const Degrade: typeof DegradeEvent;
 
   const Fork: typeof ForkEvent;
@@ -313,6 +327,8 @@ export declare namespace Event {
 
   const Warn: typeof WarnEvent;
 
+  const Metric: typeof MetricEvent;
+
   type Degrade = DegradeEvent;
 
   type Fork<Chunk extends Uint8Array = Uint8Array> = ForkEvent<Chunk>;
@@ -320,6 +336,8 @@ export declare namespace Event {
   type Terminate = TerminateEvent;
 
   type Warn = WarnEvent;
+
+  type Metric = MetricEvent;
 }
 
 type OptionDefinitions = {

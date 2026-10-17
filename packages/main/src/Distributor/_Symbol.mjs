@@ -22,6 +22,7 @@ const $I_TERMINATION = Symbol('.$termination');
 const $I_TRANSFERRER = Symbol('.$transferrer');
 const $I_DEGRADE = Symbol('.$degrade()');
 const $I_WARN = Symbol('.$warn()');
+const $I_METRIC = Symbol('.$metric()');
 const $I_FORKED_READABLE_STREAM_REGISTRY = Symbol(
   '.$forkedReadableStreamRegistry',
 );
@@ -36,6 +37,7 @@ export const $I = deepFreeze({
   TRANSFERRER: $I_TRANSFERRER,
   DEGRADE: $I_DEGRADE,
   WARN: $I_WARN,
+  METRIC: $I_METRIC,
   DESTROYED: $I_DESTROYED,
   DESTROY: $I_DESTROY,
 });

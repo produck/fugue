@@ -15,6 +15,10 @@ class Part {
   [$I.WARN](code, payload) {
     this[$I.DISTRIBUTOR][DISTRIBUTOR.$I.WARN](code, payload);
   }
+
+  [$I.METRIC](code, delta) {
+    this[$I.DISTRIBUTOR][DISTRIBUTOR.$I.METRIC](code, delta);
+  }
 }
 
 export default Part;

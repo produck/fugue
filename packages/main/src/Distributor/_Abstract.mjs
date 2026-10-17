@@ -66,6 +66,10 @@ class ReadableStreamDistributor extends EventTarget {
     this.dispatchEvent(new Event.Warn(code, payload));
   }
 
+  [$I.METRIC](code, delta) {
+    this.dispatchEvent(new Event.Metric(code, delta));
+  }
+
   fork() {
     if (this.terminated) {
       Ow.Error.Common('Distributor has been terminated');

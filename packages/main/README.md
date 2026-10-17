@@ -504,6 +504,7 @@ The distributor is an `EventTarget`. Every event class is exported under
 | `degrade`   | `Event.Degrade`   | `{ byteLength }`    |
 | `terminate` | `Event.Terminate` | `undefined`         |
 | `warn`      | `Event.Warn`      | `{ code, payload }` |
+| `metric`    | `Event.Metric`    | `{ code, delta }`   |
 
 ```js
 distributor.addEventListener('degrade', (event) => {
@@ -521,6 +522,23 @@ distributor.addEventListener('warn', (event) => {
 
 `Event.Warn` keeps `code` and `payload` correlated: narrowing one narrows
 the other.
+
+`Event.Metric` reports a counter increment, not a total: the host adds
+`delta` up. Attach the listener **synchronously after construction**, before
+the first `await` — the source is pulled only once a fork is consumed, so
+nothing is missed if no `await` sits in between. The source is locked by the
+distributor, so this event is the only way to observe how many bytes it has
+taken in.
+
+```js
+let consumed = 0;
+
+distributor.addEventListener('metric', (event) => {
+  if (event.detail.code === 'source-consumed-byte-length') {
+    consumed += event.detail.delta;
+  }
+});
+```
 
 ## Warnings
 
