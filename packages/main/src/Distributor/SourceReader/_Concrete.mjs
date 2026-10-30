@@ -1,10 +1,10 @@
 import { Ow } from '@produck/argot';
 
-import { I } from './_Symbol.mjs';
-import { PART } from './_Borrow.mjs';
 import * as Part from '../Part/index.mjs';
 import * as Warning from '../Warning.mjs';
 import * as Metric from '../Metric.mjs';
+import { PART } from './_Borrow.mjs';
+import { I } from './_Symbol.mjs';
 
 const CODE = Warning.CODES.SOURCE;
 const METRIC = Metric.CODES.SOURCE;

@@ -1,7 +1,9 @@
-import { ErrorMessage, Ow, ThrowTypeError } from '@produck/argot';
+export * from '../_Parser.mjs';
+
+import { ErrorMessage, Is, Ow, ThrowTypeError } from '@produck/argot';
 
 export function NonNegativeInteger(value) {
-  if (!Number.isInteger(value) || value < 0) {
+  if (!Is.NonNegativeInteger(value)) {
     ThrowTypeError('member', 'non-negative integer');
   }
 
@@ -17,7 +19,7 @@ export function NonNegativeIntegerOrInfinity(value) {
 }
 
 export function Boolean(value) {
-  if (typeof value !== 'boolean') {
+  if (!Is.Primitive.Boolean(value)) {
     ThrowTypeError('member', 'boolean');
   }
 

@@ -1,8 +1,8 @@
 import { Ow } from '@produck/argot';
 
 import * as Options from './Options.mjs';
-import { $I, A } from './_Symbol.mjs';
 import { DISTRIBUTOR, _A } from './_Borrow.mjs';
+import { $I, A } from './_Symbol.mjs';
 
 export default class ForkedReadableStream extends ReadableStream {
   constructor(distributor, bufferReader) {

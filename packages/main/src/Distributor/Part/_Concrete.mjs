@@ -1,5 +1,5 @@
-import { $I } from './_Symbol.mjs';
 import { DISTRIBUTOR } from './_Borrow.mjs';
+import { $I } from './_Symbol.mjs';
 
 class Part {
   [$I.DISTRIBUTOR] = null;

@@ -4,7 +4,7 @@ import { SubConstructorProxy as SCP } from '@produck/es-abstract';
 import * as Fugue from '@produck/fugue';
 
 import * as Frame from './Frame.mjs';
-import * as Parser from './Parser.mjs';
+import * as P from './_Parser.mjs';
 
 const I_CLOSE = Symbol('.#close()');
 const REMOVE_OPTIONS = { force: true, maxRetries: 5, retryDelay: 50 };
@@ -22,12 +22,12 @@ class FileTransferrer extends Fugue.Transferrer {
   writtenByteLength = 0;
 
   static [Fugue.SYMBOL.TRANSFERRER._S.PARSE_ARGUMENTS](args) {
-    return [Parser.absolutePathname(args[0], 'args[0] as pathname')];
+    return [P.absolutePathname(args[0], 'args[0] as pathname')];
   }
 
   constructor(pathname) {
     super();
-    this.pathname = Parser.absolutePathname(pathname, 'args[0] as pathname');
+    this.pathname = P.absolutePathname(pathname, 'args[0] as pathname');
   }
 
   async [Fugue.SYMBOL.TRANSFERRER._I.INITIALIZE]() {

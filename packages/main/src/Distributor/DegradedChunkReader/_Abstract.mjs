@@ -3,11 +3,12 @@ import Abstract, { Member as M } from '@produck/es-abstract';
 import { SubConstructorOf } from '@produck/es-abstract-member-constructor';
 
 import * as ChunkReader from '../ChunkReader/index.mjs';
-import * as Transferrer from './Transferrer/index.mjs';
-import { I, $I, _I, _S, A } from './_Symbol.mjs';
-import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_Borrow.mjs';
-import * as Options from './Options.mjs';
 import * as Warning from '../Warning.mjs';
+import * as Transferrer from './Transferrer/index.mjs';
+import * as P from './_Parser.mjs';
+import * as Options from './Options.mjs';
+import { TRANSFERRER, DISTRIBUTOR, PART, _A } from './_Borrow.mjs';
+import { I, $I, _I, _S, A } from './_Symbol.mjs';
 
 const CODE = Warning.CODES.DEGRADED_READER;
 
@@ -149,9 +150,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
 export default Abstract(
   AbstractDegradedChunkReader,
   Abstract({
-    [_I.READ]: M.Method().returns(
-      M.OrPromiseLike(ChunkReader.Parser.ReadableStreamResult),
-    ),
+    [_I.READ]: M.Method().returns(M.OrPromiseLike(P.ReadableStreamResult)),
     [_I.INITIALIZE]: M.Method().returns(M.OrPromiseLike(M.Undefined)),
     [_I.CLOSE]: M.Method().returns(M.OrPromiseLike(M.Undefined)),
     [_I.SEEK]: M.Method().returns(M.OrPromiseLike(M.Boolean)),

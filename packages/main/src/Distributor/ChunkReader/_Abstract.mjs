@@ -1,9 +1,9 @@
 import Abstract, { Member as M } from '@produck/es-abstract';
 
-import { $I, _I, A } from './_Symbol.mjs';
-import { DISTRIBUTOR, PART } from './_Borrow.mjs';
 import * as Part from '../Part/index.mjs';
-import * as Parser from './Parser.mjs';
+import * as P from './_Parser.mjs';
+import { DISTRIBUTOR, PART } from './_Borrow.mjs';
+import { $I, _I, A } from './_Symbol.mjs';
 
 class AbstractChunkReader extends Part.Concrete {
   [A.$I.CONSUMED_COUNT] = 0;
@@ -32,6 +32,6 @@ class AbstractChunkReader extends Part.Concrete {
 export default Abstract(
   AbstractChunkReader,
   Abstract({
-    [_I.READ]: M.Method().returns(M.OrPromiseLike(Parser.ReadableStreamResult)),
+    [_I.READ]: M.Method().returns(M.OrPromiseLike(P.ReadableStreamResult)),
   }),
 );

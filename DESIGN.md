@@ -328,7 +328,8 @@ interface ChunkReader {
   可读，或存储层已终结"，所以门放行后仍取不到货只可能是契约违规，按断言
   处理，不是一种要往下传的状态。
 - **形状归声明**：非终态**必带块**，`_I.READ` 的返回描述是
-  `ChunkReader/Parser.ReadableStreamResult`（两家族都挂）。生产构建把
+  `P.ReadableStreamResult`（表在 `ChunkReader/_Parser.mjs`，实现在
+  `Distributor/_Parser.mjs`，两家族都从各自的表取）。生产构建把
   `@produck/es-abstract-token` 换成 `./erase`（声明被丢），所以只在
   dev/test 校验——"洞形"（`{done:false, value:undefined}`）因而不进热路径
   代价。要表达"记录在但没 body"就交**零长 Buffer**。
