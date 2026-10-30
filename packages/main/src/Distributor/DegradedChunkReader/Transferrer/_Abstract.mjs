@@ -1,4 +1,4 @@
-import { Common, Ow } from '@produck/argot';
+import { Ow, sleep, ignoreRejection } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 
 import { I, $I, _I, _S, A } from './_Symbol.mjs';
@@ -78,7 +78,7 @@ class AbstractTransferrer extends Part.Concrete {
         }
 
         state.retry++;
-        await Common.sleep(retryInterval);
+        await sleep(retryInterval);
       }
     }
 
@@ -112,7 +112,7 @@ class AbstractTransferrer extends Part.Concrete {
         }
 
         state.retry++;
-        await Common.sleep(retryInterval);
+        await sleep(retryInterval);
       }
     }
 
@@ -170,7 +170,7 @@ class AbstractTransferrer extends Part.Concrete {
         }
 
         state.retry++;
-        await Common.sleep(retryInterval);
+        await sleep(retryInterval);
       }
     }
 
@@ -184,7 +184,7 @@ class AbstractTransferrer extends Part.Concrete {
 
   async [I.DRAIN]() {
     if (this[I.PREPARING] !== null) {
-      await Common.ignoreRejection(this[I.PREPARING]);
+      await ignoreRejection(this[I.PREPARING]);
     }
 
     if (this[I.PREPARING_ERROR] !== null) {

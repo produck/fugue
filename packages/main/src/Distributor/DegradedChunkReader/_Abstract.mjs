@@ -1,4 +1,4 @@
-import { Common, Ow } from '@produck/argot';
+import { Ow, sleep } from '@produck/argot';
 import Abstract, { Member as M } from '@produck/es-abstract';
 import { SubConstructorOf } from '@produck/es-abstract-member-constructor';
 
@@ -59,7 +59,7 @@ class AbstractDegradedChunkReader extends ChunkReader.Abstract {
         }
 
         state.retry++;
-        await Common.sleep(retryInterval);
+        await sleep(retryInterval);
       }
     }
 

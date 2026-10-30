@@ -1,5 +1,5 @@
-import { Common } from '@produck/argot';
+import { Boolean, Is } from '@produck/argot';
 
-export const isReadableStream = Common.ThrowFalse((value) => {
-  return value instanceof ReadableStream;
-});
+const _isReadableStream = Is.Instance.Of(ReadableStream);
+
+export const isReadableStream = Boolean.Adapter.ThrowFalse(_isReadableStream);

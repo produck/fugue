@@ -2,12 +2,12 @@
   "bugs": {
     "url": "https://github.com/produck/fugue/issues"
   },
-  "dependencies": {
-    "@produck/argot": "^0.3.1",
-    "@produck/es-abstract": "^0.4.2",
+  "description": "The file degraded medium for @produck/fugue, on Node's file system.",
+  "devDependencies": {
+    "@produck/argot": "^0.4.0",
+    "@produck/es-abstract": "^0.5.0",
     "@produck/fugue": "^0.2.0"
   },
-  "description": "The file degraded medium for @produck/fugue, on Node's file system.",
   "exports": {
     ".": {
       "import": "./src/index.mjs",
@@ -32,6 +32,11 @@
   "license": "MIT",
   "main": "./src/index.mjs",
   "name": "@produck/fugue-degraded-node-file",
+  "peerDependencies": {
+    "@produck/argot": "^0.4.0",
+    "@produck/es-abstract": "^0.5.0",
+    "@produck/fugue": "^0.2.0"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -44,6 +49,7 @@
     "produck:coverage": "c8 --reporter=lcov --reporter=html --reporter=text-summary npm test",
     "test": "node test/index.mjs"
   },
+  "sideEffects": false,
   "type": "module",
   "version": "0.1.3"
 }

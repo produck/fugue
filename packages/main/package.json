@@ -2,13 +2,13 @@
   "bugs": {
     "url": "https://github.com/produck/fugue/issues"
   },
-  "dependencies": {
-    "@produck/argot": "^0.3.1",
-    "@produck/deep-freeze-enumerable": "^1.1.1",
-    "@produck/es-abstract": "^0.4.2",
-    "@produck/es-abstract-member-constructor": "^0.1.2"
-  },
   "description": "Distribute a single Node.js ReadableStream to multiple independent consumers, each receiving a complete copy with isolated progress.",
+  "devDependencies": {
+    "@produck/argot": "^0.4.0",
+    "@produck/deep-freeze-enumerable": "^1.0.0",
+    "@produck/es-abstract": "^0.5.0",
+    "@produck/es-abstract-member-constructor": "^0.1.0"
+  },
   "exports": {
     ".": {
       "import": "./src/index.mjs",
@@ -33,6 +33,12 @@
   "license": "MIT",
   "main": "./src/index.mjs",
   "name": "@produck/fugue",
+  "peerDependencies": {
+    "@produck/argot": "^0.4.0",
+    "@produck/deep-freeze-enumerable": "^1.0.0",
+    "@produck/es-abstract": "^0.5.0",
+    "@produck/es-abstract-member-constructor": "^0.1.0"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -45,6 +51,7 @@
     "produck:coverage": "c8 --reporter=lcov --reporter=html --reporter=text-summary npm test",
     "test": "node test/index.mjs"
   },
+  "sideEffects": false,
   "type": "module",
   "version": "0.2.0"
 }

@@ -1,4 +1,4 @@
-import { Common, Ow, SYMBOL, ThrowTypeError } from '@produck/argot';
+import { Ow, SYMBOL, ThrowTypeError, ignoreRejection } from '@produck/argot';
 import Abstract from '@produck/es-abstract';
 import { SubConstructorOf } from '@produck/es-abstract-member-constructor';
 
@@ -7,7 +7,6 @@ import * as DegradedChunkReader from './DegradedChunkReader/index.mjs';
 import * as ForkedReadableStream from './ForkedReadableStream/index.mjs';
 import * as ChunkStash from './ChunkStash/index.mjs';
 import * as SourceReader from './SourceReader/index.mjs';
-
 import SourceConsumptionAgent from './SourceConsumptionAgent.mjs';
 import ForkedReadableStreamRegistry from './ForkedReadableStreamRegistry.mjs';
 import * as Warning from './Warning.mjs';
@@ -22,7 +21,7 @@ const TERMINATION_MESSAGE = 'The distributor has been terminated';
 async function initializeReader(reader, progress) {
   const initializing = reader[_A.DEGRADED.$I.REQUEST_INITIALIZE](progress);
 
-  await Common.ignoreRejection(initializing);
+  await ignoreRejection(initializing);
 }
 
 class ReadableStreamDistributor extends EventTarget {
