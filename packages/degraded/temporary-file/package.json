@@ -6,8 +6,8 @@
   "devDependencies": {
     "@produck/argot": "^0.4.0",
     "@produck/es-abstract": "^0.5.0",
-    "@produck/fugue": "^0.2.0",
-    "@produck/fugue-degraded-node-file": "^0.1.0"
+    "@produck/fugue": "^0.2.1",
+    "@produck/fugue-degraded-node-file": "^0.1.4"
   },
   "exports": {
     ".": {
@@ -54,5 +54,5 @@
   },
   "sideEffects": false,
   "type": "module",
-  "version": "0.1.3"
+  "version": "0.1.4"
 }
